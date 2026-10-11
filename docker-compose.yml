@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-devops}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD kerak}
       POSTGRES_DB: ${POSTGRES_DB:-devops_quest}
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -22,6 +22,9 @@ services:
     image: ${BOT_IMAGE:-devops-quest-bot}:${IMAGE_TAG:-local}
     restart: unless-stopped
     env_file: .env
+    environment:
+      # Parol faqat .env dagi POSTGRES_PASSWORD da — URL shu yerda yig'iladi
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-devops}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD kerak}@db:5432/${POSTGRES_DB:-devops_quest}
     depends_on:
       db:
         condition: service_healthy

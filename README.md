@@ -10,6 +10,7 @@
 
 ```bash
 cp .env.example .env          # BOT_TOKEN ni BotFather'dan qo'ying
+sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -base64 32)|" .env
 docker compose up -d --build  # migratsiya + seed avtomatik
 docker compose logs -f bot
 ```

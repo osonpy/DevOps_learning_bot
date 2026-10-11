@@ -1,0 +1,34 @@
+"""docker-compose.yml va .env.example: deploy xavfsizligi qoidalari."""
+from pathlib import Path
+
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+COMPOSE = yaml.safe_load((ROOT / "docker-compose.yml").read_text(encoding="utf-8"))
+SERVICES = COMPOSE["services"]
+
+
+def env_example() -> dict[str, str]:
+    pairs = {}
+    for line in (ROOT / ".env.example").read_text(encoding="utf-8").splitlines():
+        if line.strip() and not line.lstrip().startswith("#"):
+            k, _, v = line.partition("=")
+            pairs[k.strip()] = v.strip()
+    return pairs
+
+
+def test_postgres_password_has_no_fallback():
+    assert SERVICES["db"]["environment"]["POSTGRES_PASSWORD"] == "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD kerak}"
+
+
+def test_database_url_built_from_postgres_vars():
+    url = SERVICES["bot"]["environment"]["DATABASE_URL"]
+    assert "${POSTGRES_PASSWORD:?" in url and "${POSTGRES_USER" in url and "${POSTGRES_DB" in url
+    assert "@db:5432/" in url
+
+
+def test_env_example_has_password_once_and_placeholder():
+    env = env_example()
+    assert env["POSTGRES_PASSWORD"] == "CHANGE_ME"
+    assert "DATABASE_URL" not in env  # parol ikki marta yozilmasin
+    assert "openssl rand -base64 32" in (ROOT / ".env.example").read_text(encoding="utf-8")
