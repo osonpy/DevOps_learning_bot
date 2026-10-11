@@ -42,6 +42,10 @@ def lesson_card(lesson: Lesson, penalty: Penalty | None = None,
     return "\n".join(parts)
 
 
+def theory_header(lesson: Lesson) -> str:
+    return f"📖 <b>Batafsil nazariya — #{lesson.day_number}: {html.escape(lesson.title)}</b>"
+
+
 def _link(r: dict) -> str:
     return f'• <a href="{html.escape(r["url"])}">{html.escape(r["title"])}</a>'
 

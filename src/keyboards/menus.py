@@ -38,6 +38,8 @@ def lesson_kb(lesson: Lesson, penalty: Penalty | None, due: int = 0) -> InlineKe
         kb.button(text="✅ Bajardim", callback_data=LessonCB(action="done", lesson_id=lesson.id))
     if lesson.questions and not penalty:
         kb.button(text="🧠 Mini-test (+XP)", callback_data=LessonCB(action="quiz", lesson_id=lesson.id))
+    if lesson.theory_full:
+        kb.button(text="📖 Batafsil nazariya", callback_data=LessonCB(action="theory", lesson_id=lesson.id))
     kb.button(text="📎 Manbalar", callback_data=LessonCB(action="res", lesson_id=lesson.id))
     kb.adjust(1)
     return kb.as_markup()

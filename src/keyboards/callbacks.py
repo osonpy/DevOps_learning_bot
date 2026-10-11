@@ -2,7 +2,7 @@ from aiogram.filters.callback_data import CallbackData
 
 
 class LessonCB(CallbackData, prefix="ls"):
-    action: str  # done | quiz | res | proof
+    action: str  # done | quiz | res | proof | theory
     lesson_id: int
 
 

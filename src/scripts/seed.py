@@ -21,9 +21,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.db.models import HardcoreTask, Lesson, Module, QuizQuestion
+from src.services.theory import theory_messages
 
 CONTENT_DIR = Path(__file__).resolve().parents[2] / "content"
 LESSONS_PER_WEEK = 6
+THEORY_DIR = "theory"  # content/<level>/theory/<lesson.key>.md — ixtiyoriy "Batafsil nazariya"
 DEFAULT_XP = {"lesson": 10, "lab": 12, "project": 20}
 SEED_LOCK_KEY = 0x5EED_D0C5  # pg_advisory_xact_lock kaliti (bir vaqtda faqat bitta seed)
 
@@ -33,8 +35,16 @@ def load_content(root: Path) -> tuple[list[dict], list[tuple[str, dict]]]:
     lessons: list[tuple[str, dict]] = []
     for m in modules:
         if m.get("file"):
-            items = yaml.safe_load((root / m["file"]).read_text(encoding="utf-8"))["lessons"]
+            path = root / m["file"]
+            items = yaml.safe_load(path.read_text(encoding="utf-8"))["lessons"]
+            for item in items:
+                theory = path.parent / THEORY_DIR / f"{item['key']}.md"
+                if theory.is_file():
+                    item["theory_full"] = theory.read_text(encoding="utf-8")
             lessons += [(m["slug"], item) for item in items]
+    keys = {item["key"] for _, item in lessons}
+    orphans = [p.name for p in sorted(root.glob(f"*/{THEORY_DIR}/*.md")) if p.stem not in keys]
+    assert not orphans, f"nazariya fayli mos darssiz (key xato?): {orphans}"
     return modules, lessons
 
 
@@ -55,6 +65,11 @@ def validate(modules: list[dict], lessons: list[tuple[str, dict]]) -> None:
         for q in item.get("quiz", []):
             assert 2 <= len(q["options"]) <= 4, f"{item['key']}: 2-4 variant bo'lsin"
             assert 0 <= q["answer"] < len(q["options"]), f"{item['key']}: answer indeksi xato"
+        if item.get("theory_full"):
+            try:
+                theory_messages(item["theory_full"])
+            except ValueError as e:
+                raise AssertionError(f"{item['key']}.md: {e}") from e
 
 
 async def acquire_seed_lock(session: AsyncSession) -> None:
@@ -95,6 +110,7 @@ async def seed(session: AsyncSession, modules: list[dict], lessons: list[tuple[s
         lesson.module_id = by_slug[slug].id
         lesson.kind, lesson.title = kind, item["title"]
         lesson.theory, lesson.task = item["theory"], item["task"]
+        lesson.theory_full = item.get("theory_full")
         lesson.done_criteria = item.get("done", "")
         lesson.resources = item.get("resources", [])
         lesson.duration_min = item.get("duration", 60)

@@ -62,6 +62,7 @@ class Lesson(Base):
     kind: Mapped[str] = mapped_column(String(16), default="lesson")  # lesson | lab | project
     title: Mapped[str] = mapped_column(String(200))
     theory: Mapped[str] = mapped_column(Text)
+    theory_full: Mapped[str | None] = mapped_column(Text)  # "Batafsil nazariya" (Markdown), content/<level>/theory/<key>.md
     task: Mapped[str] = mapped_column(Text)
     done_criteria: Mapped[str] = mapped_column(Text, default="")
     resources: Mapped[list] = mapped_column(JSON, default=list)  # [{"title":..,"url":..}]

@@ -13,6 +13,7 @@ from src.keyboards.menus import BTN_TODAY, quiz_kb
 from src.middlewares.user import require_user
 from src.services import learning, render
 from src.services.clock import local_today
+from src.services.theory import theory_messages
 
 router = require_user(Router(name="lesson"))
 
@@ -33,6 +34,17 @@ async def today(message: Message, session: AsyncSession, user: User):
 async def resources(cb: CallbackQuery, callback_data: LessonCB, session: AsyncSession):
     lesson = await repo.get_lesson(session, callback_data.lesson_id)
     await reply_target(cb).answer(render.resources_text(lesson))
+    await cb.answer()
+
+
+@router.callback_query(LessonCB.filter(F.action == "theory"))
+async def theory(cb: CallbackQuery, callback_data: LessonCB, session: AsyncSession, user: User):
+    lesson = await repo.get_lesson(session, callback_data.lesson_id)
+    if lesson is None or not lesson.theory_full:
+        return await cb.answer("Bu dars uchun batafsil nazariya yo'q")
+    target = reply_target(cb)
+    for text in theory_messages(lesson.theory_full, header=render.theory_header(lesson)):
+        await target.answer(text)
     await cb.answer()
 
 
