@@ -2,7 +2,7 @@
 
 0 → Junior → Middle → Senior DevOps yo'lini o'yinga aylantiruvchi Telegram bot: kunlik 1 soatlik dars (15 daq nazariya + 45 daq amaliyot), spaced repetition takrorlash, streak, XP, eslatmalar va jarima tizimi.
 
-**Stack:** Python 3.12 · Aiogram 3 · SQLAlchemy 2 (async) · PostgreSQL 16 · Alembic · APScheduler · Docker Compose
+**Stack:** Python 3.12 · uv · Aiogram 3 · SQLAlchemy 2 (async) · PostgreSQL 16 · Alembic · APScheduler · Docker Compose
 
 **Kontent:** Junior darajasi to'liq — 44 hafta, 264 dars, 21 modul, 4 bosqich (J1 Poydevor → J2 Konteyner va CI/CD → J3 IaC va Cloud → J4 Kubernetes va Monitoring). Middle va Senior modullari roadmap'da ko'rinadi, darslari keyinroq qo'shiladi.
 
@@ -18,15 +18,19 @@ Telegram'da botga `/start` yozing. Birinchi darsni Dushanba boshlang — Yakshan
 
 ## Lokal ishlab chiqish (Docker'siz)
 
+Paketlar [uv](https://docs.astral.sh/uv/) bilan boshqariladi (`pyproject.toml` + `uv.lock`).
+
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt
+curl -LsSf https://astral.sh/uv/install.sh | sh   # uv o'rnatilmagan bo'lsa
+uv sync                                           # .venv + dev vositalar (Python 3.12 avtomatik)
 export BOT_TOKEN=... DATABASE_URL=sqlite+aiosqlite:///dev.db
-alembic upgrade head
-python -m src.scripts.seed
-python -m src.main
-pytest -q && ruff check .
+uv run alembic upgrade head
+uv run python -m src.scripts.seed
+uv run python -m src.main
+uv run pytest -q && uv run ruff check .
 ```
+
+Paket qo'shish: `uv add <paket>` (dev uchun `uv add --dev <paket>`), yangilash: `uv lock --upgrade`. `uv.lock` Git'ga commit qilinadi.
 
 ## Struktura
 
@@ -79,7 +83,7 @@ tests/                   # streak/SRS unit + to'liq oqim integration testlari
 
 1. `content/<level>/NN-<modul>.yaml` yarating (`lessons:` ro'yxati; har darsda barqaror `key`).
 2. `content/modules.yaml` da modulga `file:` qo'shing.
-3. `python -m src.scripts.seed` (yoki konteynerni qayta ishga tushiring).
+3. `uv run python -m src.scripts.seed` (yoki konteynerni qayta ishga tushiring).
 
 Seed `key` bo'yicha upsert qiladi: savollar va hardcore vazifalar joyida yangilanadi, shuning uchun takrorlash kartalari va faol jarimalar saqlanadi. Dars raqamlari va haftalar tartibdan avtomatik hisoblanadi (har 6 dars = 1 hafta).
 
