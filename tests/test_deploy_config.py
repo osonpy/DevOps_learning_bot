@@ -57,3 +57,18 @@ def test_postgres_image_pinned_by_digest():
 
 def test_db_has_memory_limit():
     assert SERVICES["db"]["deploy"]["resources"]["limits"]["memory"]
+
+
+def test_daily_backup_service_with_rotation():
+    backup = SERVICES["backup"]
+    assert backup["image"] == SERVICES["db"]["image"]
+    assert "./backups:/backups" in backup["volumes"]
+    assert str(backup["environment"]["BACKUP_KEEP_DAYS"]) == "7"
+    assert backup["depends_on"]["db"]["condition"] == "service_healthy"
+    script = (ROOT / "scripts" / "backup.sh").read_text(encoding="utf-8")
+    assert "pg_dump" in script and "-mtime" in script
+
+
+def test_backups_not_committed_or_sent_to_build_context():
+    for ignore in (".gitignore", ".dockerignore"):
+        assert "backups/" in (ROOT / ignore).read_text(encoding="utf-8").split()

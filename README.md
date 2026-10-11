@@ -17,6 +17,27 @@ docker compose logs -f bot
 
 Telegram'da botga `/start` yozing. Birinchi darsni Dushanba boshlang — Yakshanba takrorlash kuniga to'g'ri keladi.
 
+## Backup va tiklash
+
+`backup` servisi har kuni 03:00 UTC dan keyin `pg_dump` qiladi: `./backups/<db>_YYYY-MM-DD.sql.gz`, 7 kundan eskilari o'chiriladi (`scripts/backup.sh`). Fayllar `BACKUP_UID:BACKUP_GID` (standart 1000:1000) egaligida yoziladi — `./backups` papkasini oldindan shu user bilan yarating.
+
+```bash
+mkdir -p backups                         # birinchi marta (deploy user nomidan)
+docker compose run --rm backup now       # qo'lda darhol backup
+docker compose logs backup               # oxirgi backup natijasi
+```
+
+Tiklash (dump `--clean --if-exists` bilan olingan — jadvallar qayta yaratiladi):
+
+```bash
+docker compose stop bot
+gunzip -c backups/devops_quest_2026-10-11.sql.gz \
+  | docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1'
+docker compose start bot
+```
+
+Backup'lar shu serverning o'zida turadi — disk yo'qolsa ular ham yo'qoladi. Muntazam ravishda boshqa joyga ko'chiring (`rsync`, S3).
+
 ## Lokal ishlab chiqish (Docker'siz)
 
 Paketlar [uv](https://docs.astral.sh/uv/) bilan boshqariladi (`pyproject.toml` + `uv.lock`).

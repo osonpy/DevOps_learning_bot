@@ -18,7 +18,7 @@ x-app: &app
 services:
   db:
     # Digest bilan qotirilgan (16-alpine, multi-arch index). Yangilash: docker buildx imagetools inspect postgres:16-alpine
-    image: postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+    image: &postgres_image postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-devops}
@@ -58,6 +58,35 @@ services:
     deploy:
       resources:
         limits: {cpus: "0.50", memory: 256M}
+
+  # Kunlik pg_dump -> ./backups (7 kun). Qo'lda: docker compose run --rm backup now
+  backup:
+    image: *postgres_image
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/backup.sh"]
+    # ./backups egasi (host'dagi deploy user) — fayllar ham unga tegishli bo'ladi. Oldindan: mkdir -p backups
+    user: "${BACKUP_UID:-1000}:${BACKUP_GID:-1000}"
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-devops}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD kerak}
+      PGDATABASE: ${POSTGRES_DB:-devops_quest}
+      BACKUP_HOUR: 3  # UTC (Toshkent 08:00)
+      BACKUP_KEEP_DAYS: 7
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits: {memory: 128M}
+    networks: [backend]
 
   # 19-kun: `docker compose --profile tools up -d`
   adminer:
