@@ -12,7 +12,7 @@ lessons:
       4) `history` bilan bugun nima terganingizni ko'ring.
     done: "Jurnalda 5 ta buyruq va ularning izohi bor."
     resources:
-      - {title: "roadmap.sh — DevOps (Operating System bo'limi)", url: "https://roadmap.sh/devops"}
+      - {title: "Linux Journey", url: "https://linuxjourney.com/"}
       - {title: "Ubuntu — The Linux command line for beginners", url: "https://ubuntu.com/tutorials/command-line-for-beginners"}
     quiz:
       - q: "Ubuntu va Debian'da qaysi paket menejeri ishlatiladi?"
