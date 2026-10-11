@@ -26,7 +26,7 @@ COMMANDS = [
 
 async def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    bot = Bot(settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    bot = Bot(settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML, link_preview_is_disabled=True))
     dp = Dispatcher(storage=MemoryStorage())  # ko'p user bo'lganda: RedisStorage
     dp.update.middleware(DbSessionMiddleware(SessionFactory))
     dp.include_routers(start.router, settings_handlers.router, progress.router, review.router, lesson.router)

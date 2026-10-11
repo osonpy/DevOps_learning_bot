@@ -35,13 +35,13 @@ async def today(message: Message, session: AsyncSession):
     if not user:
         return
     text, kb = await build_today(session, user)
-    await message.answer(text, reply_markup=kb, disable_web_page_preview=True)
+    await message.answer(text, reply_markup=kb)
 
 
 @router.callback_query(LessonCB.filter(F.action == "res"))
 async def resources(cb: CallbackQuery, callback_data: LessonCB, session: AsyncSession):
     lesson = await repo.get_lesson(session, callback_data.lesson_id)
-    await cb.message.answer(render.resources_text(lesson), disable_web_page_preview=True)
+    await cb.message.answer(render.resources_text(lesson))
     await cb.answer()
 
 

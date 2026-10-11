@@ -38,10 +38,10 @@ async def _send(bot: Bot, user: User, text: str, kb=None) -> bool:
     """Yuboradi. False — tarmoq xatosi: chaqiruvchi o'zgarishlarni rollback qilsin (keyingi tick qayta urinadi)."""
     try:
         try:
-            await bot.send_message(user.tg_id, text, reply_markup=kb, disable_web_page_preview=True)
+            await bot.send_message(user.tg_id, text, reply_markup=kb)
         except TelegramRetryAfter as e:
             await asyncio.sleep(e.retry_after)
-            await bot.send_message(user.tg_id, text, reply_markup=kb, disable_web_page_preview=True)
+            await bot.send_message(user.tg_id, text, reply_markup=kb)
     except TelegramForbiddenError:
         log.info("user %s botni bloklagan — o'chiramiz", user.tg_id)
         user.is_active = False

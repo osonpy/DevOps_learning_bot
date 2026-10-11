@@ -90,3 +90,9 @@ async def test_network_error_retries_on_next_tick(sf):
     bot.fail.clear()
     await jobs.tick(bot, sf, now_utc=MON_0900_TASHKENT.replace(minute=1))
     assert bot.sent == [1, 3, 2]
+
+
+async def test_send_uses_bot_default_link_preview(sf):
+    bot = FakeBot()
+    await jobs.tick(bot, sf, now_utc=MON_0900_TASHKENT)
+    assert bot.kwargs and all("disable_web_page_preview" not in kw for kw in bot.kwargs)

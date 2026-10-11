@@ -1,5 +1,6 @@
 """main(): ishga tushishda xato bo'lsa ham scheduler va HTTP session yopiladi."""
 import os
+from pathlib import Path
 
 os.environ.setdefault("BOT_TOKEN", "1:test")
 
@@ -51,3 +52,12 @@ async def test_startup_failure_cleans_up(monkeypatch):
     bot = FakeBot.instances[-1]
     assert scheduler.shutdown_called
     assert bot.session.closed
+    # main() bir marta chaqiriladi (router'lar bitta Dispatcher'ga ulanadi) — default'ni shu yerda tekshiramiz
+    assert bot.default.link_preview_is_disabled is True
+
+
+def test_no_deprecated_disable_web_page_preview():
+    """aiogram'da deprecated: DefaultBotProperties(link_preview_is_disabled=True) ishlatiladi."""
+    root = Path(app.__file__).parent
+    offenders = [str(p.relative_to(root)) for p in root.rglob("*.py") if "disable_web_page_preview" in p.read_text()]
+    assert offenders == []
