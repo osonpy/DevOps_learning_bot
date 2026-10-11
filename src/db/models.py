@@ -15,11 +15,13 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     Time,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -142,6 +144,11 @@ class Completion(Base):
 
 class Penalty(TimestampMixin, Base):
     __tablename__ = "penalties"
+    __table_args__ = (
+        # Bir user'da bir vaqtda faqat bitta faol jarima (scheduler va user bir vaqtda bossa ham)
+        Index("uq_penalties_user_active", "user_id", unique=True,
+              postgresql_where=text("status = 'active'"), sqlite_where=text("status = 'active'")),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)

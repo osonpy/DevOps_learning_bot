@@ -2,6 +2,7 @@
 from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -171,10 +172,17 @@ async def create_penalty(
     session: AsyncSession, user: User, lesson: Lesson, kind: str, missed: int,
     hardcore_task_id: int | None,
 ) -> Penalty:
+    """Faol jarima allaqachon bo'lsa (parallel so'rov yaratib ulgurgan) — o'shani qaytaradi."""
     p = Penalty(user_id=user.id, lesson_id=lesson.id, kind=kind, missed_days=missed,
                 hardcore_task_id=hardcore_task_id)
-    session.add(p)
-    await session.flush()
+    try:
+        async with session.begin_nested():
+            session.add(p)
+    except IntegrityError:
+        existing = await active_penalty(session, user.id)
+        if existing is None:
+            raise
+        return existing
     return p
 
 

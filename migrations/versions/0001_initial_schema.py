@@ -2,7 +2,7 @@
 
 Revision ID: 0001
 Revises: 
-Create Date: 2026-10-11 12:38:07.836642
+Create Date: 2026-10-11 12:40:31.300449
 """
 from typing import Sequence, Union
 
@@ -123,6 +123,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id', name=op.f('pk_penalties'))
     )
     op.create_index(op.f('ix_penalties_user_id'), 'penalties', ['user_id'], unique=False)
+    op.create_index('uq_penalties_user_active', 'penalties', ['user_id'], unique=True, postgresql_where=sa.text("status = 'active'"), sqlite_where=sa.text("status = 'active'"))
     op.create_table('quiz_attempts',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -163,6 +164,7 @@ def downgrade() -> None:
     op.drop_table('review_cards')
     op.drop_index(op.f('ix_quiz_attempts_user_id'), table_name='quiz_attempts')
     op.drop_table('quiz_attempts')
+    op.drop_index('uq_penalties_user_active', table_name='penalties', postgresql_where=sa.text("status = 'active'"), sqlite_where=sa.text("status = 'active'"))
     op.drop_index(op.f('ix_penalties_user_id'), table_name='penalties')
     op.drop_table('penalties')
     op.drop_index(op.f('ix_completions_user_id'), table_name='completions')

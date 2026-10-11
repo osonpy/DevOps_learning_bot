@@ -54,3 +54,9 @@ def test_migrations_upgrade_and_match_models_on_sqlite(tmp_path, monkeypatch):
 
     assert asyncio.run(diff_and_use()) == []
     command.downgrade(cfg, "base")
+
+
+def test_partial_unique_index_for_active_penalty():
+    src = VERSIONS[0].read_text(encoding="utf-8")
+    assert "uq_penalties_user_active" in src
+    assert "postgresql_where=sa.text(\"status = 'active'\")" in src
