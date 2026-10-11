@@ -297,7 +297,7 @@ lessons:
       5) Toza VM'da `site.yml` — vaqtni o'lchang va J1 gate vaqti bilan solishtiring.
     done: "Toza serverdan ishlayotgan botgacha bitta buyruq, vaqt README'da."
     resources:
-      - {title: "GfG — Ansible tutorial", url: "https://www.geeksforgeeks.org/devops/ansible-tutorial/"}
+      - {title: "Ansible — Getting started", url: "https://docs.ansible.com/ansible/latest/getting_started/index.html"}
       - {title: "geerlingguy — Ansible for DevOps (examples)", url: "https://github.com/geerlingguy/ansible-for-devops"}
     quiz:
       - q: "Bash bootstrap'dan Ansible'ga o'tishning asosiy foydasi?"

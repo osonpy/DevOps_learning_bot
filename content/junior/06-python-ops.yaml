@@ -145,7 +145,6 @@ lessons:
       5) README: o'rnatish (pipx), misollar, arxitektura.
     done: "VPS'da `opsctl health` ishlaydi, testlar yashil."
     resources:
-      - {title: "GfG — Python for DevOps (OS module)", url: "https://www.geeksforgeeks.org/python/os-module-python-examples/"}
       - {title: "Automate the Boring Stuff with Python", url: "https://automatetheboringstuff.com/"}
     quiz:
       - q: "Ops CLI uchun `--json` chiqish nima uchun muhim?"

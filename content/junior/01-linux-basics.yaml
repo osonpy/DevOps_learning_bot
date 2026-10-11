@@ -12,7 +12,7 @@ lessons:
       4) `history` bilan bugun nima terganingizni ko'ring.
     done: "Jurnalda 5 ta buyruq va ularning izohi bor."
     resources:
-      - {title: "Linux Journey", url: "https://linuxjourney.com/"}
+      - {title: "Linux Upskill Challenge", url: "https://linuxupskillchallenge.org/"}
       - {title: "Ubuntu — The Linux command line for beginners", url: "https://ubuntu.com/tutorials/command-line-for-beginners"}
     quiz:
       - q: "Ubuntu va Debian'da qaysi paket menejeri ishlatiladi?"
@@ -115,7 +115,7 @@ lessons:
       4) `export EDITOR=vim` ni `~/.bashrc` ga qo'shing.
     done: "Faylni vim'da ochib, o'zgartirib, saqlab chiqa olasiz — sichqonchasiz."
     resources:
-      - {title: "Vim — vimtutor (o'rnatilgan)", url: "https://www.vim.org/docs.php"}
+      - {title: "Vim help — usr_01 (vimtutor)", url: "https://vimhelp.org/usr_01.txt.html"}
       - {title: "Open Vim — interaktiv tutorial", url: "https://www.openvim.com/"}
     quiz:
       - q: "Vim'dan saqlamasdan chiqish buyrug'i?"

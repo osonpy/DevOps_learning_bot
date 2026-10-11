@@ -43,7 +43,7 @@ async def test_first_lesson_shows_all_three_sections(sf):
     async with sf() as s:
         text = render.resources_text(await repo.get_lesson_by_day(s, 1))
     assert text.index(LESSON_H) < text.index(MAIN_H) < text.index(PRACTICE_H)
-    assert "https://linuxjourney.com/" in text and "Linux Journey" in text
+    assert "https://linuxupskillchallenge.org/" in text and "Linux Upskill Challenge" in text
     assert "Operating System bo'limi" not in text
     assert 'href="https://linuxcommand.org/tlcl.php"' in text
     assert 'href="https://overthewire.org/wargames/bandit/"' in text

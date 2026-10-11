@@ -355,7 +355,7 @@ lessons:
       4) Natijani jadval qiling: image → hajm → CRITICAL → HIGH.
     done: "Production image'da CRITICAL = 0."
     resources:
-      - {title: "Trivy docs", url: "https://trivy.dev/latest/"}
+      - {title: "Trivy docs", url: "https://trivy.dev/docs/latest/getting-started/"}
     quiz:
       - q: "Trivy'ni CI'da pipeline'ni to'xtatadigan qilish?"
         options: ["--quiet", "--exit-code 1 --severity CRITICAL", "--format json", "--ignore"]
