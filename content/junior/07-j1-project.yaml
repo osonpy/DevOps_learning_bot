@@ -1,0 +1,128 @@
+# J1 · Bosqich loyihasi · 14-hafta (6 dars)
+# Gate J1 → J2: yangi Ubuntu serverni runbook bo'yicha 1 soatda production holatiga keltira olasiz.
+lessons:
+  - key: j1p-01-plan
+    kind: project
+    title: "J1 LOYIHA 1/6: Reja va bootstrap"
+    theory: |
+      Bosqich loyihasi: 14 hafta davomida o'rganganlaringizni bitta takrorlanadigan jarayonga aylantiramiz. Natija — yangi serverni 1 soatda production holatiga keltiradigan `bootstrap` skriptlari va runbook. Bu hafta yangi narsa o'rganmaysiz, balki eskisini mustahkamlaysiz — takrorlash eng yaxshi o'qish.
+    task: |
+      1) `vps-bootstrap` repo; toza Ubuntu muhit tayyorlang (yangi VPS yoki lokal VM / multipass).
+      2) Reja: qadamlar ro'yxati (user, ssh, firewall, fail2ban, updates, app, nginx, tls, backup, monitoring).
+      3) `01-base.sh`: deploy user, SSH kalit, hardening — idempotent.
+      4) Toza muhitda ishga tushirib, 2-marta ham ishga tushiring (o'zgarishsiz bo'lishi kerak).
+    done: "01-base.sh toza serverda ishlaydi va idempotent."
+    resources:
+      - {title: "Multipass — lokal Ubuntu VM'lar", url: "https://canonical.com/multipass"}
+    quiz:
+      - q: "Bootstrap skriptlari nima uchun idempotent bo'lishi kerak?"
+        options: ["Tezlik", "Yarim yo'lda xato bo'lsa qayta ishga tushirish xavfsiz bo'lishi uchun", "Chiroyli", "Shart emas"]
+        answer: 1
+        why: "Qayta ishga tushirish — eng oddiy tiklash usuli."
+    hardcore:
+      - "Bootstrap'ni cloud-init (`user-data`) formatida ham yozing — VPS yaratilayotganda avtomatik ishlasin."
+
+  - key: j1p-02-security
+    kind: project
+    title: "J1 LOYIHA 2/6: Xavfsizlik qatlami"
+    theory: |
+      Ikkinchi qadam — himoya: firewall, fail2ban, avtomatik yangilanishlar, journald limitlari, swap. Har sozlama alohida, tushunarli funksiya va loglar bilan.
+    task: |
+      1) `02-security.sh`: ufw (22/80/443), fail2ban (sshd + recidive), unattended-upgrades, swap, journald limit.
+      2) Har qadamdan keyin tekshiruv (`ufw status`, `fail2ban-client status`).
+      3) Tashqaridan `nmap` bilan natijani tasdiqlang.
+      4) Skriptni shellcheck va 2-marta ishga tushirish bilan tekshiring.
+    done: "nmap'da faqat 22/80/443, fail2ban faol."
+    resources:
+      - {title: "CIS Ubuntu Linux Benchmark", url: "https://www.cisecurity.org/benchmark/ubuntu_linux"}
+    quiz:
+      - q: "Firewall'ni skript bilan yoqishda eng katta xavf?"
+        options: ["Sekinlik", "SSH portiga ruxsat bermasdan yoqib, serverdan qulflanib qolish", "Loglar", "Hech qanday"]
+        answer: 1
+        why: "Har doim avval `ufw allow 22/tcp`."
+    hardcore:
+      - "`lynis audit system` natijasidagi hardening indeksini 10 balldan ko'proq oshiring va qaysi o'zgarishlar ta'sir qilganini yozing."
+
+  - key: j1p-03-app
+    kind: project
+    title: "J1 LOYIHA 3/6: Ilova, Nginx va TLS"
+    theory: |
+      Uchinchi qadam — xizmat: opsctl yoki FastAPI ilovangiz systemd'da, Nginx ortida, HTTPS bilan. Hammasi shablonlardan (Jinja2 yoki here-doc) generatsiya qilinadi — qo'lda tahrirlash yo'q.
+    task: |
+      1) `03-app.sh`: appsvc user, venv, ilova, systemd unit (xavfsizlik cheklovlari bilan).
+      2) `04-nginx.sh`: server block shablondan, rate limit, headerlar, certbot.
+      3) `DOMAIN` va `APP_PORT` env orqali beriladi.
+      4) Toza serverda 01→04 ni ketma-ket ishga tushirib, https://... ochilishini tekshiring.
+    done: "Toza serverdan HTTPS ilovagacha faqat skriptlar bilan."
+    resources:
+      - {title: "Certbot — non-interactive usage", url: "https://eff-certbot.readthedocs.io/en/stable/using.html#certbot-command-line-options"}
+    quiz:
+      - q: "certbot'ni skriptda interaktivsiz ishlatish uchun nima kerak?"
+        options: ["Hech narsa", "`--non-interactive --agree-tos -m email` flaglari", "Root parol", "GUI"]
+        answer: 1
+        why: "Avtomatlashtirishda savol beradigan buyruqlar ishlamaydi."
+    hardcore:
+      - "Blue-green: `/srv/app/releases/<sana>` + `current` symlink bilan yangi versiyani deploy qiluvchi va xato bo'lsa avtomatik qaytaruvchi `deploy.sh` yozing."
+
+  - key: j1p-04-ops
+    kind: project
+    title: "J1 LOYIHA 4/6: Monitoring, alertlar va backup"
+    theory: |
+      To'rtinchi qadam — kuzatish va himoya: health-check toolkit (yoki opsctl) timer bilan, Telegram alertlar, pg_dump + restic backup'lar va retention.
+    task: |
+      1) `05-ops.sh`: opsctl/toolkit o'rnatish, timer, .env shablon.
+      2) restic + pg_dump timer, retention qoidalari.
+      3) Ataylab diskni to'ldirib (`fallocate -l`) alert kelishini tekshiring.
+      4) Backup'dan bitta faylni tiklang.
+    done: "Alert keldi, backup'dan tiklash ishladi."
+    resources:
+      - {title: "restic — Preparing a new repository", url: "https://restic.readthedocs.io/en/stable/030_preparing_a_new_repo.html"}
+    quiz:
+      - q: "Monitoring alertini qanday tekshirish to'g'ri?"
+        options: ["Kutish", "Ataylab shartni yaratib (masalan diskni to'ldirib) alert kelishini ko'rish", "Logni o'qish", "Tekshirish shart emas"]
+        answer: 1
+        why: "Hech qachon sinalmagan alert — kerak paytda ishlamaydi."
+    hardcore:
+      - "'Dead man's switch': alert tizimingiz o'zi ishlamay qolsa (timer to'xtasa) buni tashqi servis (masalan healthchecks.io bepul tarifi) orqali bilib oling."
+
+  - key: j1p-05-runbook
+    kind: project
+    title: "J1 LOYIHA 5/6: Runbook va diagramma"
+    theory: |
+      Beshinchi qadam — hujjat. Runbook — kechasi soat 3 da charchagan holda ham bajarsa bo'ladigan aniq qadamlar. Yaxshi runbook: maqsad, oldindan shartlar, buyruqlar (nusxa olinadigan), kutilgan natija, muammo bo'lsa nima qilish.
+    task: |
+      1) `RUNBOOK.md`: serverni noldan qurish, sertifikat yangilash, backup'dan tiklash, servisni restart, disk to'lganda.
+      2) Portlar va servislar jadvali.
+      3) Mermaid arxitektura diagrammasi README'da.
+      4) "Incident" bo'limi: 3 ta odatiy muammo va ularning diagnostikasi (Tarmoq LAB'laridagi jadvalingizdan).
+    done: "Runbook'ni boshqa odam (yoki 2 hafta keyingi siz) savolsiz bajara oladi."
+    resources:
+      - {title: "Google SRE Book — Being On-Call", url: "https://sre.google/sre-book/being-on-call/"}
+    quiz:
+      - q: "Yaxshi runbook qadamining zarur qismi?"
+        options: ["Nazariya", "Aniq buyruq va kutilgan natija", "Tarix", "Hazil"]
+        answer: 1
+        why: "Kutilgan natija bo'lmasa, qadam muvaffaqiyatli bo'lganini bilmaysiz."
+    hardcore:
+      - "Runbook'dagi har buyruqni avtomatik tekshiradigan skript yozing: README'dagi ```bash bloklarini ajratib, toza konteynerda ishga tushirsin."
+
+  - key: j1p-06-gate
+    kind: project
+    title: "J1 GATE: 1 soatda noldan production"
+    theory: |
+      Bosqich imtihoni: toza serverni faqat repo va runbook bilan 1 soat ichida to'liq production holatiga keltirasiz. O'tsangiz — J2 (konteynerlar va CI/CD) ga tayyorsiz. O'tmasangiz — qaysi qadam sekin bo'lganini topib, uni avtomatlashtiring va keyingi hafta qayta urinib ko'ring.
+    task: |
+      1) Yangi toza muhit (VPS reinstall yoki yangi VM). Taymer yoqing.
+      2) Faqat runbook va skriptlar bilan: user → xavfsizlik → ilova → nginx/TLS → monitoring → backup.
+      3) Tekshiruv: https ishlaydi, nmap toza, alert keladi, backup'dan tiklash ishlaydi.
+      4) Vaqtni va to'siqlarni RETRO-J1.md ga yozing.
+    done: "Hammasi 60 daqiqadan kam vaqtda tayyor. J1 tugadi!"
+    resources:
+      - {title: "roadmap.sh — DevOps", url: "https://roadmap.sh/devops"}
+    quiz:
+      - q: "Gate'dan o'ta olmasangiz to'g'ri harakat?"
+        options: ["Keyingi bosqichga o'tib ketish", "Sekin qadamni avtomatlashtirib qayta urinish", "Hammasini boshidan o'qish", "Taslim bo'lish"]
+        answer: 1
+        why: "Gate — bilimni o'lchash; bo'shliqni aniq to'ldirasiz."
+    hardcore:
+      - "Gate'ni 30 daqiqadan kam vaqtda o'ting — buning uchun nimani avtomatlashtirish kerakligini rejalashtiring."

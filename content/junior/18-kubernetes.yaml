@@ -1,0 +1,613 @@
+# J4 · Kubernetes asoslari · 36–39-hafta (24 dars)
+lessons:
+  - key: k8s-01-why
+    title: "Nega orkestratsiya va Kubernetes arxitekturasi"
+    theory: |
+      Compose — bitta host. Ko'p host, self-healing, rolling update, avtomatik masshtab, service discovery kerak bo'lsa — orkestrator. Kubernetes arxitekturasi: control plane (kube-apiserver — hamma narsa API orqali; etcd — klaster holati; scheduler — pod'ni node'ga joylash; controller-manager — "kerakli holat vs haqiqiy holat" sikllari) va worker node'lar (kubelet, kube-proxy, containerd).
+      Asosiy g'oya — deklarativlik: siz YAML'da kerakli holatni yozasiz, controller'lar uni doimiy ta'minlaydi (reconciliation loop).
+    task: |
+      1) Arxitektura diagrammasini qo'lda chizing (jurnalga rasm).
+      2) "Kerakli holat vs haqiqiy holat" ni ASG va Compose restart bilan solishtiring.
+      3) Kubernetes qachon kerak EMAS — 3 ta holat yozing (bitta VPS, kichik jamoa...).
+      4) roadmap.sh/kubernetes'ni ko'rib, J4 va Middle'da nimalar bo'lishini belgilang.
+    done: "Har control plane komponentining vazifasini bir jumlada ayta olasiz."
+    resources:
+      - {title: "Kubernetes docs — Components", url: "https://kubernetes.io/docs/concepts/overview/components/"}
+      - {title: "GfG — Kubernetes Architecture", url: "https://www.geeksforgeeks.org/devops/kubernetes-architecture/"}
+    quiz:
+      - q: "Klaster holati qayerda saqlanadi?"
+        options: ["kubelet", "etcd", "kube-proxy", "Docker Hub"]
+        answer: 1
+        why: "etcd — yagona haqiqat manbai."
+      - q: "Pod'ni qaysi node'da ishga tushirishni kim hal qiladi?"
+        options: ["kubelet", "scheduler", "etcd", "kubectl"]
+        answer: 1
+        why: "Resurs va cheklovlarga qarab."
+    hardcore:
+      - "`kubectl get --raw /apis | jq` bilan API guruhlarini o'rganing va bitta Deployment'ni `curl` bilan to'g'ridan-to'g'ri API'dan oling (kubectl proxy orqali)."
+
+  - key: k8s-02-local
+    title: "Lokal klaster: kind/k3d va kubectl"
+    theory: |
+      O'rganish uchun lokal klaster: kind (Kubernetes in Docker), k3d (k3s in Docker), minikube. `kubectl` — asosiy vosita; konfig ~/.kube/config: clusters, users, contexts. `kubectl config get-contexts`, `use-context`. Qulayliklar: `alias k=kubectl`, autocompletion, kubectx/kubens, k9s.
+    task: |
+      1) kind o'rnating, 1 control-plane + 2 worker konfig fayli bilan klaster yarating.
+      2) `kubectl get nodes -o wide`, `kubectl get pods -A` — kube-system ichidagi komponentlarni aniqlang.
+      3) kubectl autocompletion va `k` alias.
+      4) `kubectl explain deployment.spec` bilan hujjatni terminalda o'qing.
+    done: "3 node'li lokal klaster ishlaydi."
+    resources:
+      - {title: "kind — Quick Start", url: "https://kind.sigs.k8s.io/docs/user/quick-start/"}
+      - {title: "kubectl Quick Reference", url: "https://kubernetes.io/docs/reference/kubectl/quick-reference/"}
+    quiz:
+      - q: "kubectl qaysi klasterga ulanishini nima belgilaydi?"
+        options: ["Tasodifiy", "~/.kube/config'dagi joriy context", "Region", "Docker"]
+        answer: 1
+        why: "Noto'g'ri context'da buyruq — klassik xato."
+      - q: "`kubectl explain` nima uchun?"
+        options: ["Xatolarni tushuntiradi", "Resurs maydonlari hujjatini ko'rsatadi", "Log", "Debug"]
+        answer: 1
+        why: "YAML yozishda internet'siz yordam."
+    hardcore:
+      - "Promptingizga joriy kube context va namespace'ni qo'shing (kube-ps1) — noto'g'ri klasterda ishlashning oldini olish uchun."
+
+  - key: k8s-03-pods
+    title: "Pod: manifest, apply, logs, exec"
+    theory: |
+      Pod — eng kichik birlik: bir yoki bir nechta konteyner, umumiy IP va volume'lar. Manifest: apiVersion, kind, metadata (name, labels), spec (containers: image, ports, env). `kubectl apply -f`, `get`, `describe` (Events bo'limi — debug'ning kaliti!), `logs [-f] [-c konteyner] [--previous]`, `exec -it`, `port-forward`, `delete`.
+      Yalang'och pod deyarli hech qachon to'g'ridan-to'g'ri ishlatilmaydi — Deployment boshqaradi.
+    task: |
+      1) FastAPI image'ingiz uchun pod manifesti (kind'ga `kind load docker-image` bilan yuklang).
+      2) apply, describe (Events'ni o'qing), logs, exec bilan ichiga kiring.
+      3) `kubectl port-forward pod/app 8000:8000` bilan lokal oching.
+      4) Pod'ni o'chiring — qayta tug'iladimi?
+    done: "Pod'ni ishga tushirib, describe Events'ni o'qiy olasiz."
+    resources:
+      - {title: "Kubernetes docs — Pods", url: "https://kubernetes.io/docs/concepts/workloads/pods/"}
+      - {title: "GfG — Kubernetes Pods", url: "https://www.geeksforgeeks.org/devops/kubernetes-pods/"}
+    quiz:
+      - q: "Pod nima uchun ishlamayotganini bilishning birinchi qadami?"
+        options: ["Reboot", "`kubectl describe pod` dagi Events", "Pod'ni o'chirish", "Node'ni tekshirish"]
+        answer: 1
+        why: "Scheduler, image pull, probe xatolari shu yerda."
+      - q: "Yiqilib qayta ishga tushgan konteynerning oldingi logi?"
+        options: ["logs -f", "logs --previous", "describe", "Yo'qolgan"]
+        answer: 1
+        why: "CrashLoop debug'ida muhim."
+    hardcore:
+      - "Bir pod'da ikki konteyner (ilova + log o'qiydigan sidecar, umumiy emptyDir volume) va init container (DB tayyorligini kutadigan) yozing."
+
+  - key: k8s-04-labels
+    title: "Labels, selectors va namespaces"
+    theory: |
+      Labels — kalit-qiymat teglar (`app: bot`, `env: prod`); selectors — ularni tanlash (`kubectl get pods -l app=bot`). Deployment, Service va NetworkPolicy aynan labels orqali pod'larni topadi — label xatosi = trafik yo'q.
+      Namespace — klaster ichidagi mantiqiy bo'linma (dev, prod, monitoring): nomlar, RBAC, ResourceQuota chegarasi. `-n`, `-A`, `kubectl config set-context --current --namespace=`.
+    task: |
+      1) `devops-quest` namespace yarating va ishingizni u yerga o'tkazing.
+      2) Pod'larga app, env, version label'lari; `-l` va `--show-labels` bilan tanlang.
+      3) `kubectl label` bilan label qo'shing/o'zgartiring.
+      4) ResourceQuota bilan namespace'da maksimal 5 pod cheklovi.
+    done: "Label selector'lar bilan resurslarni tanlaysiz, quota ishlaydi."
+    resources:
+      - {title: "Kubernetes docs — Labels and Selectors", url: "https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/"}
+      - {title: "GfG — Kubernetes Namespaces", url: "https://www.geeksforgeeks.org/devops/kubernetes-namespaces/"}
+    quiz:
+      - q: "Service qaysi pod'larga trafik yuborishini qanday biladi?"
+        options: ["Nom bo'yicha", "Label selector orqali", "IP ro'yxati", "Namespace"]
+        answer: 1
+        why: "Label xato bo'lsa endpoint'lar bo'sh."
+      - q: "Namespace nima beradi?"
+        options: ["Tarmoq izolyatsiyasi avtomatik", "Nomlar, RBAC va resurs kvotalari uchun mantiqiy chegara", "Alohida klaster", "Shifrlash"]
+        answer: 1
+        why: "Tarmoq izolyatsiyasi uchun NetworkPolicy kerak."
+    hardcore:
+      - "LimitRange bilan namespace'dagi har konteynerga default requests/limits qo'ying va limitsiz pod'ga qanday qo'llanishini ko'rsating."
+
+  - key: k8s-05-deployments
+    title: "Deployment, ReplicaSet va rolling update"
+    theory: |
+      Deployment → ReplicaSet → Pod'lar. Deployment versiyalarni boshqaradi: image o'zgarsa yangi ReplicaSet, rolling update (`maxSurge`, `maxUnavailable`), `kubectl rollout status/history/undo`. `replicas: 3` — har doim 3 ta pod (o'lgani almashtiriladi).
+      `kubectl set image` yoki manifestni o'zgartirib `apply` (deklarativ — afzal). `kubectl scale`.
+    task: |
+      1) FastAPI uchun Deployment (3 replika).
+      2) Pod'ni o'chiring — almashtirilishini kuzating.
+      3) Image tag'ini o'zgartirib apply, `rollout status`; noto'g'ri tag bilan rollout'ni kuzating va `rollout undo`.
+      4) `kubectl get rs` — eski ReplicaSet'lar nima uchun saqlanishini tushuntiring.
+    done: "Rolling update va undo'ni amalda qildingiz."
+    resources:
+      - {title: "Kubernetes docs — Deployments", url: "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/"}
+    quiz:
+      - q: "`maxUnavailable: 0` nimani kafolatlaydi?"
+        options: ["Tezlik", "Yangilash paytida tayyor pod'lar soni kamaymaydi", "Bir pod", "Hech narsa"]
+        answer: 1
+        why: "Yangi pod tayyor bo'lgandan keyingina eskisi o'chadi."
+      - q: "Oldingi versiyaga qaytish?"
+        options: ["kubectl delete", "kubectl rollout undo", "kubectl restart", "Rebuild"]
+        answer: 1
+        why: "Eski ReplicaSet qayta kattalashtiriladi."
+    hardcore:
+      - "`revisionHistoryLimit`, `progressDeadlineSeconds` va `minReadySeconds` ni sozlab, buzilgan rollout avtomatik 'failed' bo'lishini ko'rsating."
+
+  - key: k8s-06-lab
+    kind: lab
+    title: "LAB: CrashLoopBackOff va ImagePullBackOff"
+    theory: |
+      Eng ko'p uchraydigan pod holatlari: ImagePullBackOff / ErrImagePull (noto'g'ri image nomi/tag, private registry'ga imagePullSecret yo'q), CrashLoopBackOff (konteyner ishga tushib yiqiladi — logs --previous!), CreateContainerConfigError (ConfigMap/Secret yo'q), OOMKilled (limit kichik), Pending (resurs yetmaydi — keyingi lab).
+      Tartib: `get pods` (holat) → `describe` (Events) → `logs --previous` → manifest.
+    task: |
+      Har holatni yarating va faqat kubectl bilan sababini toping:
+      1) Mavjud bo'lmagan image tag.
+      2) Ilova majburiy env'siz yiqiladi (CrashLoop).
+      3) Mavjud bo'lmagan Secret'ga havola.
+      4) memory limit 10Mi (OOMKilled).
+      5) "holat → buyruq → sabab → tuzatish" jadvali.
+    done: "4 holat 15 daqiqa ichida topildi."
+    resources:
+      - {title: "Kubernetes docs — Debug Pods", url: "https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/"}
+      - {title: "Learnk8s — A visual guide on troubleshooting Kubernetes", url: "https://learnk8s.io/troubleshooting-deployments"}
+    quiz:
+      - q: "CrashLoopBackOff'da sababni bilish uchun eng foydali buyruq?"
+        options: ["kubectl get nodes", "kubectl logs <pod> --previous", "kubectl top", "kubectl version"]
+        answer: 1
+        why: "Yiqilgan konteynerning oxirgi chiqishi."
+      - q: "Private registry'dan image tortilmayapti. Nima yetishmaydi?"
+        options: ["Service", "imagePullSecrets", "Ingress", "ConfigMap"]
+        answer: 1
+        why: "Registry credentials Secret sifatida."
+    hardcore:
+      - "`kubectl debug` bilan yiqiladigan pod'ning nusxasini boshqa entrypoint bilan ishga tushirib, ichidan tekshiring (`--copy-to`)."
+
+  - key: k8s-07-services
+    title: "Services: ClusterIP, NodePort, LoadBalancer va DNS"
+    theory: |
+      Pod IP'lari o'zgaradi — Service barqaror virtual IP va DNS nom beradi (`bot.devops-quest.svc.cluster.local`, qisqa `bot`). Turlari: ClusterIP (faqat klaster ichida, default), NodePort (har node'ning portida), LoadBalancer (cloud LB yaratadi), ExternalName. Headless (`clusterIP: None`) — StatefulSet uchun.
+      `kubectl get endpoints` (yoki endpointslices) — Service orqasida qaysi pod IP'lari bor; bo'sh bo'lsa — selector xato yoki pod'lar tayyor emas.
+    task: |
+      1) FastAPI Deployment uchun ClusterIP Service.
+      2) Vaqtinchalik pod'dan (`kubectl run tmp --rm -it --image=curlimages/curl -- sh`) `curl http://app` va to'liq DNS nom bilan.
+      3) NodePort'ga o'zgartirib, kind node IP orqali oching.
+      4) `kubectl get endpointslices` — replika sonini o'zgartirib endpoint'lar o'zgarishini kuzating.
+    done: "Service DNS orqali klaster ichida ishlaydi."
+    resources:
+      - {title: "Kubernetes docs — Service", url: "https://kubernetes.io/docs/concepts/services-networking/service/"}
+      - {title: "GfG — Kubernetes Services", url: "https://www.geeksforgeeks.org/devops/kubernetes-services/"}
+    quiz:
+      - q: "Klaster ichidagi boshqa servislar uchun default Service turi?"
+        options: ["NodePort", "ClusterIP", "LoadBalancer", "ExternalName"]
+        answer: 1
+        why: "Tashqi kirish uchun Ingress yoki LB."
+      - q: "Service bor, lekin endpoint'lar bo'sh. Sabab?"
+        options: ["DNS", "Selector pod label'lariga mos emas yoki pod'lar Ready emas", "Port", "Namespace yo'q"]
+        answer: 1
+        why: "Klassik xato."
+    hardcore:
+      - "kube-proxy iptables qoidalarida Service ClusterIP'ning qanday DNAT bo'lishini node ichidan (`docker exec` kind node) toping."
+
+  - key: k8s-08-ingress
+    title: "Ingress va ingress controller"
+    theory: |
+      Ingress — HTTP(S) marshrutlash qoidalari (host, path → Service); ularni bajaradigan ingress controller alohida o'rnatiladi (ingress-nginx, Traefik — k3s'da default). TLS: Secret'dagi sertifikat yoki cert-manager (Let's Encrypt avtomatik). Gateway API — Ingress'ning zamonaviy davomchisi (Middle'da).
+    task: |
+      1) kind'ga ingress-nginx o'rnating (kind uchun maxsus manifest).
+      2) Ingress: `app.localtest.me` → FastAPI Service, `/api` va `/` uchun ikki xil Service.
+      3) `curl -H 'Host: app.localtest.me' localhost`.
+      4) Self-signed sertifikat Secret bilan TLS qo'shing.
+    done: "Ingress host va path bo'yicha marshrutlaydi."
+    resources:
+      - {title: "Kubernetes docs — Ingress", url: "https://kubernetes.io/docs/concepts/services-networking/ingress/"}
+      - {title: "kind — Ingress", url: "https://kind.sigs.k8s.io/docs/user/ingress/"}
+    quiz:
+      - q: "Ingress resursi o'zi trafikni qabul qiladimi?"
+        options: ["Ha", "Yo'q — ingress controller (masalan ingress-nginx) kerak", "Faqat cloud'da", "Faqat TLS bilan"]
+        answer: 1
+        why: "Ingress — qoidalar; controller — bajaruvchi."
+      - q: "Ingress'ning J1'dagi analogi?"
+        options: ["ufw", "Nginx reverse proxy server block'lari", "systemd", "DNS"]
+        answer: 1
+        why: "Host/path → upstream."
+    hardcore:
+      - "cert-manager o'rnatib, self-signed ClusterIssuer bilan Ingress uchun sertifikatni avtomatik chiqaring (VPS'da esa Let's Encrypt issuer)."
+
+  - key: k8s-09-config
+    title: "ConfigMap va Secret"
+    theory: |
+      ConfigMap — maxfiy bo'lmagan konfig (env yoki fayl sifatida mount), Secret — maxfiy ma'lumot (base64 — bu SHIFRLASH EMAS!). Pod'ga: `envFrom`, `env.valueFrom.secretKeyRef`, volume mount (fayl o'zgarishi avtomatik yangilanadi, env esa — yo'q, restart kerak).
+      Production'da Secret'larni Git'da ochiq saqlamang: Sealed Secrets, External Secrets (SSM'dan!), SOPS — Middle bosqichida.
+    task: |
+      1) Ilova konfigini ConfigMap'ga, DB parolini Secret'ga (`kubectl create secret generic --from-literal`).
+      2) envFrom bilan pod'ga bering; `kubectl exec ... env` bilan tekshiring.
+      3) ConfigMap'ni fayl sifatida mount qilib, o'zgartiring — pod ichida yangilanishini kuzating.
+      4) `kubectl get secret -o yaml` va `base64 -d` — nima uchun bu shifrlash emasligini isbotlang.
+    done: "Konfig va sirlar manifestdan tashqarida."
+    resources:
+      - {title: "Kubernetes docs — Secrets", url: "https://kubernetes.io/docs/concepts/configuration/secret/"}
+      - {title: "GfG — Kubernetes Secrets", url: "https://www.geeksforgeeks.org/devops/kubernetes-secrets/"}
+    quiz:
+      - q: "Kubernetes Secret default holatda qanday saqlanadi?"
+        options: ["AES bilan shifrlangan", "Faqat base64 kodlangan", "Hash", "Saqlanmaydi"]
+        answer: 1
+        why: "etcd encryption va RBAC kerak."
+      - q: "ConfigMap env sifatida berilsa, o'zgarganda pod nima qiladi?"
+        options: ["Avtomatik yangilaydi", "Hech narsa — pod restart kerak", "Yiqiladi", "O'chadi"]
+        answer: 1
+        why: "Volume mount — yangilanadi (biroz kechikish bilan)."
+    hardcore:
+      - "Deployment pod template'iga ConfigMap xeshi annotatsiyasini qo'shib, konfig o'zgarganda avtomatik rolling restart bo'ladigan qiling (Helm'dagi checksum naqshi)."
+
+  - key: k8s-10-probes
+    title: "Probes: liveness, readiness, startup"
+    theory: |
+      readinessProbe — pod trafik olishga tayyormi (muvaffaqiyatsiz — Service endpoint'laridan chiqariladi, lekin o'ldirilmaydi). livenessProbe — pod "tirikmi" (muvaffaqiyatsiz — konteyner restart). startupProbe — sekin ishga tushadigan ilovalar uchun, tugaguncha liveness kutadi.
+      Xato: liveness'ni tashqi bog'liqlikka (DB) bog'lash — DB yiqilsa hamma pod'lar cheksiz restart bo'ladi. Liveness — faqat jarayonning o'zi; readiness — bog'liqliklar.
+    task: |
+      1) FastAPI'ga `/healthz` (liveness — oddiy) va `/readyz` (readiness — DB ulanishi) endpoint'lari.
+      2) Probes'ni manifestga qo'shing (initialDelay, period, failureThreshold).
+      3) DB'ni to'xtatib: readiness yiqiladi, pod'lar restart bo'lmaydi — endpoint'lar bo'shaydi.
+      4) Ataylab liveness'ni DB'ga bog'lab, falokatni ko'ring va tuzating.
+    done: "Liveness va readiness farqini amalda isbotladingiz."
+    resources:
+      - {title: "Kubernetes docs — Configure probes", url: "https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/"}
+    quiz:
+      - q: "readiness muvaffaqiyatsiz bo'lsa?"
+        options: ["Pod o'ldiriladi", "Pod Service endpoint'laridan chiqariladi, lekin ishlashda davom etadi", "Node o'chadi", "Hech narsa"]
+        answer: 1
+        why: "Trafik to'xtaydi, restart yo'q."
+      - q: "Liveness'ni DB holatiga bog'lashning xavfi?"
+        options: ["Yo'q", "DB yiqilsa hamma pod'lar cheksiz restart sikliga tushadi", "Sekinlashadi", "Xavfsiz"]
+        answer: 1
+        why: "Kaskad nosozlik."
+    hardcore:
+      - "Graceful shutdown: preStop hook + `terminationGracePeriodSeconds` + readiness bilan rolling update paytida 0 xato bo'lishini yuklama testida isbotlang."
+
+  - key: k8s-11-resources
+    title: "Resources: requests, limits, QoS"
+    theory: |
+      requests — scheduler uchun kafolatlangan minimum (pod qaysi node'ga sig'ishini belgilaydi), limits — maksimum: CPU limitidan oshsa throttling (sekinlashadi), memory limitidan oshsa OOMKilled. QoS sinflari: Guaranteed (requests = limits), Burstable, BestEffort (hech narsa — birinchi o'ldiriladi).
+      `kubectl top pods/nodes` (metrics-server kerak). To'g'ri qiymatlarni haqiqiy o'lchovlardan oling, taxmindan emas.
+    task: |
+      1) metrics-server o'rnating (kind uchun `--kubelet-insecure-tls`).
+      2) `kubectl top pods` bilan haqiqiy foydalanishni o'lchab, requests/limits qo'ying.
+      3) Uchala QoS sinfidagi pod'larni yaratib, `kubectl get pod -o jsonpath='{.status.qosClass}'`.
+      4) CPU limitini juda kichik qilib, javob vaqti o'sishini (throttling) o'lchang.
+    done: "Har ilova konteynerida asoslangan requests/limits."
+    resources:
+      - {title: "Kubernetes docs — Resource Management", url: "https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/"}
+    quiz:
+      - q: "Memory limitidan oshsa?"
+        options: ["Sekinlashadi", "OOMKilled", "Hech narsa", "Disk'ga yoziladi"]
+        answer: 1
+        why: "CPU — throttling, memory — kill."
+      - q: "Scheduler pod'ni joylashda nimaga qaraydi?"
+        options: ["limits", "requests", "Haqiqiy foydalanish", "Label"]
+        answer: 1
+        why: "Kafolatlangan resurs."
+    hardcore:
+      - "Vertical Pod Autoscaler'ni recommendation rejimida o'rnatib, ilovangiz uchun tavsiya etilgan requests'ni oling va o'zingiznikiga solishtiring."
+
+  - key: k8s-12-lab
+    kind: lab
+    title: "LAB: Pending pod"
+    theory: |
+      Pending — pod hech qaysi node'ga joylashmadi. Sabablar (describe Events'da "FailedScheduling"): yetarli CPU/RAM yo'q (requests juda katta), nodeSelector/affinity mos node yo'q, taint'lar va toleration yo'q, PVC bog'lanmagan, ResourceQuota oshgan.
+    task: |
+      Har holatni yarating va toping:
+      1) `requests.memory: 64Gi`.
+      2) Mavjud bo'lmagan label bilan nodeSelector.
+      3) Worker node'larga taint (`kubectl taint nodes ... key=val:NoSchedule`) — toleration'siz pod.
+      4) ResourceQuota'dan oshadigan replika soni (Deployment Events/ReplicaSet'da ko'rinadi).
+      5) Runbook jadvali.
+    done: "4 ta Pending sababi topildi."
+    resources:
+      - {title: "Kubernetes docs — Taints and Tolerations", url: "https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/"}
+    quiz:
+      - q: "Pending pod sababini qayerdan ko'rasiz?"
+        options: ["kubectl logs", "kubectl describe pod (Events: FailedScheduling)", "Node logi", "DNS"]
+        answer: 1
+        why: "Konteyner hali ishga tushmagan — log yo'q."
+      - q: "Taint nima qiladi?"
+        options: ["Node'ni o'chiradi", "Mos toleration'i bo'lmagan pod'larni node'dan qaytaradi", "Label qo'shadi", "Tezlashtiradi"]
+        answer: 1
+        why: "Masalan control-plane node'larida."
+    hardcore:
+      - "Pod anti-affinity bilan 3 replika har xil node'larga tushishini majburlang va 2 worker'li klasterda 3-replika nima bo'lishini tushuntiring."
+
+  - key: k8s-13-storage
+    title: "Volumes, PV, PVC va StorageClass"
+    theory: |
+      emptyDir — pod umri bilan; PersistentVolume (PV) — klaster darajasidagi disk; PersistentVolumeClaim (PVC) — pod'ning disk so'rovi (hajm, access mode: ReadWriteOnce...). StorageClass — PV'larni dinamik yaratish (kind/k3s'da local-path, AWS'da EBS CSI). reclaimPolicy: Delete yoki Retain.
+      Pod o'chsa PVC va ma'lumot qoladi; PVC o'chsa (Delete policy) — disk ham o'chadi!
+    task: |
+      1) `kubectl get storageclass` — default'ni aniqlang.
+      2) PVC (1Gi) va uni mount qiluvchi pod; fayl yozing.
+      3) Pod'ni o'chirib qayta yarating — fayl joyida.
+      4) PVC'ni o'chiring — PV va ma'lumot nima bo'ladi (reclaimPolicy)?
+    done: "PVC bilan ma'lumot pod'dan uzoq yashaydi."
+    resources:
+      - {title: "Kubernetes docs — Persistent Volumes", url: "https://kubernetes.io/docs/concepts/storage/persistent-volumes/"}
+      - {title: "GfG — Kubernetes Volumes", url: "https://www.geeksforgeeks.org/devops/kubernetes-volumes/"}
+    quiz:
+      - q: "PVC nima?"
+        options: ["Disk", "Pod (foydalanuvchi) tomonidan saqlash joyiga so'rov", "StorageClass", "Snapshot"]
+        answer: 1
+        why: "PV — taklif, PVC — so'rov."
+      - q: "reclaimPolicy: Delete bo'lganda PVC o'chirilsa?"
+        options: ["Ma'lumot qoladi", "PV va asosiy disk ham o'chiriladi", "Arxivlanadi", "Xato"]
+        answer: 1
+        why: "Muhim ma'lumot uchun Retain."
+    hardcore:
+      - "VolumeSnapshot (CSI snapshotter bilan, imkon bo'lsa) yoki Velero bilan namespace va PVC'ni backup qilib, boshqa namespace'ga tiklang."
+
+  - key: k8s-14-statefulset
+    title: "StatefulSet: Postgres Kubernetes'da"
+    theory: |
+      StatefulSet — barqaror nom (db-0, db-1), barqaror tarmoq identifikatori (headless Service orqali) va har pod uchun alohida PVC (volumeClaimTemplates). Tartibli ishga tushish/to'xtash.
+      Muhim qaror: production DB'ni K8s ichida ishlatish murakkab (backup, replikatsiya, upgrade) — ko'p jamoalar managed DB (RDS) yoki operator (CloudNativePG) tanlaydi. O'rganish uchun — oddiy StatefulSet.
+    task: |
+      1) Postgres StatefulSet (1 replika), headless Service, volumeClaimTemplate, Secret'dan parol.
+      2) FastAPI'ni unga ulang (`postgres-0.postgres` yoki Service nomi).
+      3) Pod'ni o'chiring — xuddi shu PVC bilan qaytadi.
+      4) "DB K8s'da yoki tashqarida?" — ADR yozing.
+    done: "Postgres StatefulSet ishlaydi, ADR yozilgan."
+    resources:
+      - {title: "Kubernetes docs — StatefulSets", url: "https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/"}
+      - {title: "CloudNativePG", url: "https://cloudnative-pg.io/"}
+    quiz:
+      - q: "StatefulSet'ning Deployment'dan asosiy farqi?"
+        options: ["Tezroq", "Barqaror pod nomlari, tarmoq identifikatori va har pod uchun alohida PVC", "Ko'proq replika", "Faqat DB uchun"]
+        answer: 1
+        why: "Holatli ilovalar uchun."
+      - q: "Production'da Postgres uchun ko'pincha tanlanadigan yo'l?"
+        options: ["Oddiy Deployment", "Managed DB (RDS) yoki DB operator", "emptyDir", "hostPath"]
+        answer: 1
+        why: "Operatsion murakkablik yuqori."
+    hardcore:
+      - "CloudNativePG operator bilan 2 replikali Postgres klaster ko'taring va primary pod'ni o'chirib avtomatik failover'ni kuzating."
+
+  - key: k8s-15-jobs
+    title: "Jobs va CronJobs"
+    theory: |
+      Job — tugaguncha ishlaydigan vazifa (migratsiya, bir martalik skript): `completions`, `parallelism`, `backoffLimit`, `ttlSecondsAfterFinished` (tozalash). CronJob — jadval bo'yicha Job (backup, hisobotlar): `schedule`, `concurrencyPolicy: Forbid` (flock'ning K8s analogi!), `successfulJobsHistoryLimit`, `timeZone`.
+    task: |
+      1) Alembic migratsiyasini Job sifatida ishga tushiring.
+      2) pg_dump CronJob: har kecha, PVC'ga yoki S3'ga, `concurrencyPolicy: Forbid`.
+      3) `kubectl create job --from=cronjob/backup manual-1` bilan qo'lda ishga tushiring.
+      4) Ataylab yiqiladigan Job bilan backoffLimit'ni kuzating.
+    done: "Migratsiya Job va backup CronJob ishlaydi."
+    resources:
+      - {title: "Kubernetes docs — CronJob", url: "https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/"}
+      - {title: "GfG — Kubernetes Jobs", url: "https://www.geeksforgeeks.org/devops/kubernetes-jobs/"}
+    quiz:
+      - q: "Oldingi backup tugamagan bo'lsa yangisini boshlamaslik uchun?"
+        options: ["backoffLimit", "concurrencyPolicy: Forbid", "parallelism: 1", "suspend"]
+        answer: 1
+        why: "Bash'dagi flock'ning analogi."
+      - q: "Tugagan Job'larni avtomatik tozalash?"
+        options: ["kubectl delete har safar", "ttlSecondsAfterFinished", "restartPolicy", "Imkonsiz"]
+        answer: 1
+        why: "Klaster chiqindisiz qoladi."
+    hardcore:
+      - "Migratsiya Job'ini Deployment rollout'idan oldin avtomatik ishlaydigan qiling (Helm pre-upgrade hook yoki init container) va ikkala usulni solishtiring."
+
+  - key: k8s-16-daemonset
+    title: "DaemonSet va node darajasidagi agentlar"
+    theory: |
+      DaemonSet — har (yoki tanlangan) node'da bittadan pod: log yig'uvchilar (Promtail/Fluent Bit), node_exporter, CNI va kube-proxy. Yangi node qo'shilsa avtomatik pod paydo bo'ladi. Ko'pincha hostPath (node fayllari) va toleration'lar bilan.
+    task: |
+      1) `kubectl get ds -A` — klasterdagi mavjud DaemonSet'larni aniqlang (kube-proxy, CNI).
+      2) node_exporter DaemonSet'ini yozing (hostNetwork, /proc va /sys ni read-only mount).
+      3) Har node'dan metrikani port-forward bilan tekshiring.
+      4) Control-plane node'ga ham tushishi uchun toleration qo'shing.
+    done: "node_exporter har node'da ishlaydi."
+    resources:
+      - {title: "Kubernetes docs — DaemonSet", url: "https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/"}
+    quiz:
+      - q: "DaemonSet qachon ishlatiladi?"
+        options: ["Veb ilova uchun", "Har node'da bitta nusxa kerak bo'lgan agentlar uchun (log, monitoring)", "DB uchun", "Bir martalik vazifa"]
+        answer: 1
+        why: "Node darajasidagi xizmatlar."
+      - q: "Klasterga yangi node qo'shilsa DaemonSet?"
+        options: ["Hech narsa", "Avtomatik yangi node'da pod yaratadi", "Qo'lda kerak", "Restart"]
+        answer: 1
+        why: "Controller avtomatik."
+    hardcore:
+      - "DaemonSet uchun `updateStrategy: RollingUpdate` va `maxUnavailable` ni sozlab, node agentini birma-bir yangilashni kuzating."
+
+  - key: k8s-17-hpa
+    title: "HPA va avtomatik masshtablash"
+    theory: |
+      Horizontal Pod Autoscaler — metrikaga qarab replika sonini o'zgartiradi (CPU/memory — metrics-server'dan, custom — Prometheus adapter'dan). Formula: kerakli replika ≈ joriy × (joriy metrika / maqsad). requests to'g'ri qo'yilishi shart — HPA foizni requests'ga nisbatan hisoblaydi.
+      Node darajasida: Cluster Autoscaler yoki Karpenter (cloud'da yangi node qo'shadi).
+    task: |
+      1) FastAPI'ga CPU og'ir endpoint qo'shing.
+      2) HPA: min 1, max 5, CPU 50%.
+      3) Yuklama bering (`kubectl run load --image=busybox -- sh -c "while true; do wget -q -O- http://app/heavy; done"`), `kubectl get hpa -w`.
+      4) Yuklama to'xtagach scale-down kechikishini kuzating (stabilization window).
+    done: "HPA yuklama bilan replika sonini oshirdi va kamaytirdi."
+    resources:
+      - {title: "Kubernetes docs — Horizontal Pod Autoscaling", url: "https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/"}
+    quiz:
+      - q: "HPA CPU foizini nimaga nisbatan hisoblaydi?"
+        options: ["Node CPU", "Konteyner requests.cpu", "limits", "Klaster jami"]
+        answer: 1
+        why: "requests bo'lmasa HPA ishlamaydi."
+      - q: "Pod'lar soni oshdi, lekin node'larda joy yo'q. Kim yordam beradi?"
+        options: ["HPA", "Cluster Autoscaler / Karpenter", "VPA", "kubelet"]
+        answer: 1
+        why: "Node'lar sonini masshtablaydi."
+    hardcore:
+      - "Botning navbatdagi (masalan scheduler kutayotgan) vazifalar soni kabi custom metrika bo'yicha KEDA bilan masshtablashni sinab ko'ring."
+
+  - key: k8s-18-lab
+    kind: lab
+    title: "LAB: Service ishlamayapti"
+    theory: |
+      Tarmoq muammolari tartibi: pod ishlayaptimi va Ready'mi → Service selector pod label'lariga mosmi → endpoint'lar bormi → targetPort konteyner portiga mosmi → DNS (`nslookup app` vaqtinchalik pod'dan) → NetworkPolicy bloklayaptimi → Ingress qoidasi va controller loglari.
+    task: |
+      Har holatni yarating va toping:
+      1) Service selector'da label xatosi.
+      2) targetPort noto'g'ri.
+      3) Pod readiness yiqilgan (endpoint'lar bo'sh).
+      4) Boshqa namespace'dan qisqa nom bilan murojaat (DNS — to'liq nom kerak).
+      5) Runbook: "Service ishlamayapti" bo'limi.
+    done: "4 holat runbook'da."
+    resources:
+      - {title: "Kubernetes docs — Debug Services", url: "https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/"}
+    quiz:
+      - q: "Boshqa namespace'dagi Service'ga murojaat?"
+        options: ["Faqat nom", "<service>.<namespace> yoki to'liq FQDN", "IP faqat", "Imkonsiz"]
+        answer: 1
+        why: "Qisqa nom faqat o'z namespace'ida."
+      - q: "Endpoint'lar bor, lekin ulanish rad etiladi. Ehtimoliy sabab?"
+        options: ["Selector", "targetPort konteyner tinglayotgan portga mos emas", "DNS", "Quota"]
+        answer: 1
+        why: "Service port → targetPort → konteyner."
+    hardcore:
+      - "netshoot pod'ini klasterga qo'yib, `tcpdump` bilan Service → pod trafikini ushlang va kube-proxy DNAT'ini ko'rsating."
+
+  - key: k8s-19-rbac
+    title: "RBAC va ServiceAccount"
+    theory: |
+      RBAC: Role/ClusterRole (qaysi resurslarga qaysi amallar: get, list, watch, create...) + RoleBinding/ClusterRoleBinding (kimga: user, group, ServiceAccount). Role — namespace ichida, ClusterRole — butun klaster. ServiceAccount — pod'larning identifikatori (CI deploy uchun ham).
+      `kubectl auth can-i list pods --as=system:serviceaccount:ns:sa` — tekshirish. Least privilege: CI faqat o'z namespace'iga deploy qila olsin.
+    task: |
+      1) `deployer` ServiceAccount: faqat `devops-quest` namespace'ida deployments va services'ni boshqarish.
+      2) `kubectl auth can-i` bilan ruxsat va taqiqlarni tekshiring.
+      3) Shu SA uchun token bilan alohida kubeconfig yarating va boshqa namespace'ga kirishga urining.
+      4) Pod'larda `automountServiceAccountToken: false` (kerak bo'lmasa).
+    done: "deployer faqat o'z namespace'ida ishlay oladi."
+    resources:
+      - {title: "Kubernetes docs — Using RBAC Authorization", url: "https://kubernetes.io/docs/reference/access-authn-authz/rbac/"}
+    quiz:
+      - q: "Role va ClusterRole farqi?"
+        options: ["Bir xil", "Role — bitta namespace; ClusterRole — klaster darajasida yoki ko'p namespace'da qayta ishlatiladigan", "ClusterRole faqat admin", "Role eskirgan"]
+        answer: 1
+        why: "Binding qamrovni belgilaydi."
+      - q: "Ruxsatni tekshirish buyrug'i?"
+        options: ["kubectl check", "kubectl auth can-i", "kubectl rbac", "kubectl whoami"]
+        answer: 1
+        why: "--as bilan boshqa identity sifatida."
+    hardcore:
+      - "Faqat o'qish huquqli 'auditor' ClusterRole yarating (Secret'larsiz!) va nima uchun `get secrets` huquqi amalda admin'ga yaqin ekanini tushuntiring."
+
+  - key: k8s-20-netpol
+    title: "NetworkPolicy asoslari"
+    theory: |
+      Default holatda klasterdagi hamma pod hamma bilan gaplashadi. NetworkPolicy — pod'lar uchun firewall (label selector'lar bilan): ingress/egress qoidalari. Avval "default deny" (namespace'dagi hamma kirish yopiq), keyin aniq ruxsatlar (ingress-nginx → app, app → db).
+      NetworkPolicy faqat uni qo'llab-quvvatlaydigan CNI bilan ishlaydi (Calico, Cilium; k3s default'ida bor; kind default'ida yo'q — Calico o'rnatish kerak).
+    task: |
+      1) kind klasterni CNI'siz yaratib Calico o'rnating (yoki k3d/k3s ishlating).
+      2) Default deny ingress policy.
+      3) Ruxsatlar: ingress controller → app, app → postgres (5432).
+      4) Vaqtinchalik pod'dan postgres'ga ulanishga urinib, bloklanishini tekshiring.
+    done: "DB'ga faqat ilova ulana oladi."
+    resources:
+      - {title: "Kubernetes docs — Network Policies", url: "https://kubernetes.io/docs/concepts/services-networking/network-policies/"}
+      - {title: "NetworkPolicy Editor (Cilium)", url: "https://editor.networkpolicy.io/"}
+    quiz:
+      - q: "NetworkPolicy'siz klasterda pod'lar?"
+        options: ["Izolyatsiyalangan", "Hammasi bir-biri bilan erkin gaplasha oladi", "Faqat namespace ichida", "Hech kim bilan"]
+        answer: 1
+        why: "Default — allow all."
+      - q: "NetworkPolicy ishlashi uchun nima shart?"
+        options: ["Ingress", "Uni qo'llab-quvvatlaydigan CNI (Calico, Cilium)", "RBAC", "Helm"]
+        answer: 1
+        why: "Aks holda policy'lar e'tiborsiz qoladi."
+    hardcore:
+      - "Egress'ni ham yoping: app faqat DB, DNS (kube-dns 53) va Telegram API'ga chiqa olsin."
+
+  - key: k8s-21-k3s
+    title: "k3s'ni Contabo'da o'rnatish"
+    theory: |
+      k3s — yengil, sertifikatlangan Kubernetes distributivi: bitta binary, kichik VPS'da ishlaydi, Traefik (ingress), local-path storage va ServiceLB bilan keladi. Production'da kichik klasterlar va edge uchun ishlatiladi.
+      E'tibor: VPS resurslari (k3s + ilovalar + keyinroq monitoring), firewall (6443 API'ni internetga ochmang — SSH tunnel yoki WireGuard orqali kubectl), kubeconfig'ni lokal kompyuterga xavfsiz olish.
+    task: |
+      1) VPS'da k3s o'rnating (rasmiy skript), `kubectl get nodes`.
+      2) Kubeconfig'ni lokalga oling, server manzilini tunnel/WireGuard orqali (6443 tashqariga yopiq!).
+      3) Traefik ingress va local-path StorageClass'ni tekshiring.
+      4) Mavjud Docker Compose bot bilan resurs to'qnashuvini rejalashtiring (port 80/443 kimda).
+    done: "Lokal kompyuterdan VPS'dagi k3s'ni xavfsiz boshqarasiz."
+    resources:
+      - {title: "k3s docs — Quick-Start", url: "https://docs.k3s.io/quick-start"}
+    quiz:
+      - q: "k3s API porti (6443) ni internetga ochish o'rniga?"
+        options: ["Ochish kerak", "SSH tunnel yoki VPN (WireGuard) orqali kirish", "NodePort", "HTTP"]
+        answer: 1
+        why: "API server — klasterning yuragi."
+      - q: "k3s'da default ingress controller?"
+        options: ["ingress-nginx", "Traefik", "HAProxy", "Yo'q"]
+        answer: 1
+        why: "O'chirish yoki almashtirish mumkin."
+    hardcore:
+      - "k3s'ni etcd snapshot'lari bilan sozlang (`--etcd-snapshot-schedule-cron`) va snapshot'dan tiklashni sinang."
+
+  - key: k8s-22-bot-deploy
+    title: "Botni k3s'ga deploy qilish"
+    theory: |
+      Endi DevOps Quest botining o'zini Kubernetes'ga ko'chiramiz: Namespace, Secret (bot token, DB), Postgres (StatefulSet yoki tashqi), migratsiya Job, bot Deployment (polling — 1 replika! `strategy: Recreate` — ikki nusxa bir vaqtda polling qilmasligi uchun), backup CronJob, NetworkPolicy.
+    task: |
+      1) `k8s/` papka: namespace, secret (GHCR imagePullSecret ham), postgres, migrate job, bot deployment (Recreate), backup cronjob.
+      2) `kubectl apply -k` (kustomization.yaml) bilan bir buyruqda.
+      3) Compose'dagi DB'dan K8s DB'ga pg_dump/restore bilan ma'lumotlarni ko'chiring.
+      4) Compose versiyasini to'xtating; bot K8s'da ishlayotganini /progress bilan tasdiqlang.
+    done: "Bot k3s'da ishlaydi, eski ma'lumotlar saqlangan."
+    resources:
+      - {title: "Kubernetes docs — Kustomize", url: "https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/"}
+    quiz:
+      - q: "Polling bot uchun nima uchun `strategy: Recreate`?"
+        options: ["Tezroq", "Rolling update'da ikki nusxa bir vaqtda getUpdates qilib konflikt bo'ladi", "Majburiy", "Arzonroq"]
+        answer: 1
+        why: "Telegram bitta polling ulanishga ruxsat beradi."
+      - q: "Compose'dan K8s'ga ko'chishda ma'lumotlarni qanday o'tkazasiz?"
+        options: ["Volume'ni ko'chirish", "pg_dump → pg_restore", "Qayta yaratish", "Imkonsiz"]
+        answer: 1
+        why: "Mantiqiy backup — eng xavfsiz."
+    hardcore:
+      - "Kustomize overlays: `base`, `overlays/dev` (lokal kind), `overlays/prod` (k3s) — farqlar faqat patch'larda."
+
+  - key: k8s-23-debug-toolkit
+    title: "Debug toolkit: events, top, debug, k9s"
+    theory: |
+      Kundalik vositalar: `kubectl get events --sort-by=.lastTimestamp -n ns`, `kubectl top`, `kubectl debug node/<node> -it --image=busybox` (node'ga kirish), `kubectl debug pod --image=netshoot --target=app` (ephemeral container — distroless pod'lar uchun), `kubectl port-forward`, `kubectl cp`, `-o yaml | less`, `stern` (ko'p pod logi), k9s (TUI).
+    task: |
+      1) k9s va stern o'rnating; k9s'da asosiy tugmalarni o'rganing (logs, describe, shell, delete).
+      2) Distroless pod'ga ephemeral debug container bilan kiring.
+      3) `kubectl debug node/...` bilan node fayl tizimini ko'ring.
+      4) O'zingiz uchun "kubectl debug cheatsheet" (15 buyruq) yozing.
+    done: "Cheatsheet tayyor, ephemeral container ishlatildi."
+    resources:
+      - {title: "Kubernetes docs — Debug Running Pods", url: "https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/"}
+      - {title: "k9s", url: "https://k9scli.io/"}
+    quiz:
+      - q: "Shell'siz (distroless) pod ichini tekshirish?"
+        options: ["Imkonsiz", "Ephemeral debug container (`kubectl debug --target`)", "Rebuild", "kubectl exec sh"]
+        answer: 1
+        why: "Pod'ning namespace'larini bo'lishadi."
+      - q: "Namespace'dagi oxirgi hodisalarni vaqt bo'yicha ko'rish?"
+        options: ["kubectl logs", "kubectl get events --sort-by=.lastTimestamp", "kubectl top", "kubectl describe ns"]
+        answer: 1
+        why: "Klaster darajasidagi muammolar uchun birinchi qadam."
+    hardcore:
+      - "Kichik `kdiag.sh` skripti: namespace berilsa, Ready bo'lmagan pod'lar, so'nggi Warning event'lar, restart soni yuqori konteynerlar va bo'sh endpoint'li Service'larni bitta hisobotga yig'sin."
+
+  - key: k8s-24-project
+    kind: project
+    title: "LOYIHA: bot k3s'da production sifatida"
+    theory: |
+      Modul yakuni: bot k3s'da Ingress + TLS (webhook bo'lsa) yoki polling, Secret'lar, probes, resurslar, NetworkPolicy, backup CronJob va RBAC bilan cheklangan CI deploy. Keyingi modulda Helm chart'ga aylantirasiz.
+    task: |
+      1) Botga `/healthz` va `/readyz` (aiohttp) — probes.
+      2) requests/limits o'lchovlardan; NetworkPolicy (default deny + aniq ruxsatlar).
+      3) CI: image push → `deployer` SA kubeconfig (secret) bilan `kubectl set image` yoki `apply -k`.
+      4) Backup CronJob → S3 (yoki VPS tashqarisiga).
+      5) README: K8s arxitektura diagrammasi, debug runbook havolasi.
+    done: "main'ga merge → bot k3s'da yangilanadi; NetworkPolicy va backup ishlaydi."
+    resources:
+      - {title: "milanm — Learn Container Orchestration", url: "https://github.com/milanm/DevOps-Roadmap#7-learn-container-orchestration"}
+      - {title: "GfG — Kubernetes Tutorial", url: "https://www.geeksforgeeks.org/devops/kubernetes-tutorial/"}
+    quiz:
+      - q: "CI uchun kubeconfig qanday bo'lishi kerak?"
+        options: ["Admin kubeconfig", "Faqat kerakli namespace'ga cheklangan ServiceAccount", "Root SSH", "Hech qanday"]
+        answer: 1
+        why: "CI kompromentatsiyasi klasterni egallamasin."
+    hardcore:
+      - "CI o'rniga GitOps'ga birinchi qadam: Argo CD'ni k3s'ga o'rnatib, `k8s/` papkasini Git'dan avtomatik sinxronlaydigan qiling (Middle mavzusiga sakrash)."

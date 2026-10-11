@@ -1,0 +1,156 @@
+# J1 · Python for Ops · 13-hafta (6 dars)
+# Python sintaksisini bilasiz — bu modul faqat ops'ga xos qismlar.
+lessons:
+  - key: pyops-01-subprocess
+    title: "subprocess, pathlib va shutil"
+    theory: |
+      Bash 50 qatordan oshsa — Python'ga o'ting. `subprocess.run(["systemctl", "is-active", "nginx"], capture_output=True, text=True, check=False, timeout=10)` — ro'yxat ko'rinishida (shell=True'dan qoching — injection xavfi), `returncode`, `stdout`. `shlex.quote` — majbur bo'lsangiz.
+      `pathlib.Path` — yo'llar bilan qulay ishlash (`glob`, `stat().st_mtime`, `read_text`), `shutil` — nusxa, arxiv (`make_archive`), `disk_usage`.
+    task: |
+      1) `svcstat.py`: berilgan servislar ro'yxati uchun `systemctl is-active` natijasini jadval qilsin.
+      2) 7 kundan eski log fayllarni pathlib bilan topib, `--delete` bo'lsa o'chirsin.
+      3) `shutil.disk_usage("/")` bilan disk foizi.
+      4) `shell=True` + foydalanuvchi kiritgan qiymat xavfini misol bilan ko'rsating.
+    done: "Skriptlar shell=True'siz ishlaydi, timeout bilan."
+    resources:
+      - {title: "Python docs — subprocess", url: "https://docs.python.org/3/library/subprocess.html"}
+      - {title: "Real Python — pathlib", url: "https://realpython.com/python-pathlib/"}
+    quiz:
+      - q: "Nima uchun `subprocess.run(cmd, shell=True)` xavfli?"
+        options: ["Sekin", "Tashqi kiritilgan qiymat bilan shell injection mumkin", "Ishlamaydi", "Xavfli emas"]
+        answer: 1
+        why: "Argumentlarni ro'yxat sifatida bering."
+      - q: "subprocess'da buyruq osilib qolmasligi uchun?"
+        options: ["check=True", "timeout=", "text=True", "capture_output"]
+        answer: 1
+        why: "timeout oshsa TimeoutExpired."
+    hardcore:
+      - "health.sh (bash toolkit) ni Python'ga ko'chiring va ikkala versiyani o'qilishi, xatolarni ushlash va test qilinishi bo'yicha solishtiring."
+
+  - key: pyops-02-http
+    title: "API va health check'lar: httpx, retry, timeout"
+    theory: |
+      Ops skriptlari ko'pincha API bilan gaplashadi: health check, Telegram alert, GitHub/Cloud API. `httpx` (sync va async): har doim `timeout=`, `raise_for_status()`, retry eksponensial kutish bilan (`tenacity`). Bir nechta URL — `asyncio.gather` bilan parallel.
+      Idempotent bo'lmagan so'rovlarni (POST) ko'r-ko'rona retry qilmang. Sirlar env'dan, loglarda maskalangan.
+    task: |
+      1) `uptime.py`: urls.yaml dagi URL'larni async parallel tekshirsin (status, vaqt, xato).
+      2) tenacity bilan 3 marta retry (1s, 2s, 4s).
+      3) Muvaffaqiyatsizlarini Telegram'ga bitta xabarda yuborsin.
+      4) 50 URL bilan sync va async versiya vaqtini solishtiring.
+    done: "Async versiya sync'dan sezilarli tez, xatolar Telegram'ga keladi."
+    resources:
+      - {title: "HTTPX docs", url: "https://www.python-httpx.org/"}
+      - {title: "Tenacity docs", url: "https://tenacity.readthedocs.io/"}
+    quiz:
+      - q: "Nima uchun har HTTP so'rovda timeout kerak?"
+        options: ["Majburiy sintaksis", "Javob bermayotgan server skriptni abadiy osib qo'ymasligi uchun", "Tezlik", "Xavfsizlik"]
+        answer: 1
+        why: "httpx default timeout beradi, lekin requests'da default yo'q."
+      - q: "Qaysi so'rovni avtomatik retry qilish xavfli bo'lishi mumkin?"
+        options: ["GET", "To'lov yaratuvchi POST", "HEAD", "OPTIONS"]
+        answer: 1
+        why: "Ikki marta bajarilsa ikki to'lov — idempotency key kerak."
+    hardcore:
+      - "Circuit breaker naqshini qo'lda yozing: 5 ketma-ket xatodan keyin 60 soniya so'rov yubormasin, keyin bitta sinov so'rovi."
+
+  - key: pyops-03-cli
+    title: "CLI vositalar: typer, exit kodlar, logging"
+    theory: |
+      Yaxshi ops vositasi: `--help`, aniq exit kodlar (0 ok, 1 xato, 2 noto'g'ri foydalanish), stdout'da natija, stderr'da loglar, `--json` (mashina uchun), `--dry-run`, `--verbose`. `typer` (type hint asosida) yoki `argparse`.
+      `logging` moduli: darajalar (DEBUG..CRITICAL), format, handler'lar; print o'rniga. Konteyner va systemd'da loglarni stdout/stderr'ga yozing — journald/Docker o'zi yig'adi.
+    task: |
+      1) `opsctl` skeleti: typer bilan `health`, `ssl-check`, `backup` subcommandlari.
+      2) `--json`, `--verbose`, exit kodlar.
+      3) logging: stderr'ga, `-v` bo'lsa DEBUG.
+      4) `opsctl --help` va har subcommand help'i tushunarli bo'lsin.
+    done: "`opsctl health --json | jq` ishlaydi, xatoda exit 1."
+    resources:
+      - {title: "Typer docs", url: "https://typer.tiangolo.com/"}
+      - {title: "Python docs — Logging HOWTO", url: "https://docs.python.org/3/howto/logging.html"}
+    quiz:
+      - q: "Konteynerdagi ilova loglarini qayerga yozishi kerak?"
+        options: ["/var/log/app.log", "stdout/stderr", "Ma'lumotlar bazasiga", "/tmp"]
+        answer: 1
+        why: "Docker/K8s/journald ularni o'zi yig'adi (12-factor)."
+      - q: "Skript noto'g'ri argument bilan chaqirildi. An'anaviy exit code?"
+        options: ["0", "2", "127", "255"]
+        answer: 1
+        why: "2 — usage xatosi (argparse ham shuni qaytaradi)."
+    hardcore:
+      - "opsctl uchun shell auto-completion'ni yoqing va `pytest` + `typer.testing.CliRunner` bilan 5 ta test yozing."
+
+  - key: pyops-04-config
+    title: "Konfiguratsiya: YAML, env va Jinja2 shablonlar"
+    theory: |
+      12-factor: konfiguratsiya muhit o'zgaruvchilarida (env), kod va sirlar alohida. pydantic-settings — env'dan tiplangan va tekshirilgan konfig. YAML — inson uchun konfig fayllar (`yaml.safe_load`, hech qachon `yaml.load`!).
+      Jinja2 — konfig fayllarni shablondan generatsiya: nginx server block, systemd unit, .env. Bu Ansible template'larining aynan o'zi — hozir o'rganib qo'ying.
+    task: |
+      1) opsctl'ga pydantic-settings bilan konfig: `OPSCTL_TELEGRAM_TOKEN` va h.k., yo'q bo'lsa tushunarli xato.
+      2) `sites.yaml` (domen, port, upstream'lar) dan Jinja2 bilan nginx server block'lar generatsiya qiling.
+      3) Natijani `nginx -t` bilan tekshiring.
+      4) `yaml.load` nima uchun xavfli — jurnalga.
+    done: "YAML'dan generatsiya qilingan nginx konfig `nginx -t` dan o'tadi."
+    resources:
+      - {title: "The Twelve-Factor App — Config", url: "https://12factor.net/config"}
+      - {title: "Jinja docs", url: "https://jinja.palletsprojects.com/"}
+    quiz:
+      - q: "12-factor bo'yicha konfiguratsiya qayerda bo'ladi?"
+        options: ["Kod ichida", "Muhit o'zgaruvchilarida", "Ma'lumotlar bazasida", "Git'dagi config.py da"]
+        answer: 1
+        why: "Bir xil image/kod turli muhitlarda turli env bilan ishlaydi."
+      - q: "Nima uchun `yaml.safe_load`?"
+        options: ["Tezroq", "yaml.load ixtiyoriy Python obyektlarini yaratib, kod bajarishi mumkin", "Farqi yo'q", "Yangi"]
+        answer: 1
+        why: "Ishonchsiz YAML — RCE xavfi."
+    hardcore:
+      - "Jinja2 shablonlari uchun golden test yozing: `sites.yaml` o'zgarsa, generatsiya qilingan konfig kutilgan fayl bilan diff qilinib, farq bo'lsa test yiqilsin."
+
+  - key: pyops-05-packaging
+    title: "Paketlash: venv, pipx, pyproject entry points"
+    theory: |
+      Vositani boshqa serverga olib borish: `pyproject.toml` da `[project.scripts] opsctl = "opsctl.cli:app"` — o'rnatilganda `opsctl` buyrug'i paydo bo'ladi. `pipx install .` — har vosita o'z izolyatsiyalangan venv'ida. Versiyalarni qotiring (lock fayl: `pip-tools`, `uv`).
+      Tarqatish: Git'dan (`pipx install git+https://...`), wheel artefakt yoki keyinroq Docker image. Tizim Python'iga `sudo pip install` qilmang.
+    task: |
+      1) opsctl'ni `pyproject.toml` bilan paket qiling, entry point qo'shing.
+      2) `pipx install .` va `opsctl --help` istalgan papkadan ishlashini tekshiring.
+      3) VPS'ga GitHub'dan `pipx install git+...` bilan o'rnating.
+      4) `uv` yoki `pip-compile` bilan lock fayl yarating.
+    done: "opsctl serverga bitta buyruq bilan o'rnatiladi."
+    resources:
+      - {title: "Python Packaging User Guide", url: "https://packaging.python.org/en/latest/tutorials/packaging-projects/"}
+      - {title: "pipx", url: "https://pipx.pypa.io/"}
+    quiz:
+      - q: "CLI vositalarni o'rnatish uchun pipx'ning afzalligi?"
+        options: ["Tezroq", "Har vosita alohida venv'da — tizim va boshqa vositalar bilan to'qnashmaydi", "Root kerak emas", "Faqat Linux"]
+        answer: 1
+        why: "Dependency to'qnashuvlarining oldini oladi."
+      - q: "`sudo pip install` ning xavfi?"
+        options: ["Yo'q", "Tizim paketlari ishlatadigan Python kutubxonalarini buzishi mumkin", "Sekin", "Ishlamaydi"]
+        answer: 1
+        why: "Yangi distributivlar buni bloklaydi (externally-managed)."
+    hardcore:
+      - "opsctl uchun GitHub Release'ga wheel artefaktini avtomatik qo'shadigan oddiy `make release` maqsadini yozing (CI moduliga tayyorgarlik)."
+
+  - key: pyops-06-project
+    kind: project
+    title: "LOYIHA: opsctl — o'z ops vositangiz"
+    theory: |
+      Modul yakuni: bash toolkit va netcheck tajribangizni bitta toza, testlangan Python CLI'ga aylantirasiz. Bu sizning portfolio'dagi birinchi "dasturchi + ops" loyihangiz va keyinchalik CI/CD modulida unga pipeline qurasiz.
+    task: |
+      `opsctl` repo:
+      1) Buyruqlar: `health` (CPU/RAM/disk/servislar), `ssl-check <domenlar>`, `uptime <urls.yaml>`, `backup run|list`.
+      2) pydantic-settings konfig, logging, `--json`, exit kodlar.
+      3) Telegram alert (opsiya).
+      4) pytest bilan kamida 8 test, ruff toza.
+      5) README: o'rnatish (pipx), misollar, arxitektura.
+    done: "VPS'da `opsctl health` ishlaydi, testlar yashil."
+    resources:
+      - {title: "GfG — Python for DevOps (OS module)", url: "https://www.geeksforgeeks.org/python/os-module-python-examples/"}
+      - {title: "Automate the Boring Stuff with Python", url: "https://automatetheboringstuff.com/"}
+    quiz:
+      - q: "Ops CLI uchun `--json` chiqish nima uchun muhim?"
+        options: ["Chiroyli", "Boshqa vositalar (jq, monitoring, CI) natijani ishonchli o'qishi uchun", "Majburiy", "Tezlik"]
+        answer: 1
+        why: "Inson uchun matn, mashina uchun JSON."
+    hardcore:
+      - "opsctl'ga plugin tizimi qo'shing: `opsctl_plugins` entry point guruhi orqali tashqi paketlar yangi subcommand qo'sha olsin."

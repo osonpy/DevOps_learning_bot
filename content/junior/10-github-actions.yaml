@@ -1,0 +1,460 @@
+# J2 · GitHub Actions · 19–21-hafta (18 dars)
+lessons:
+  - key: gha-01-cicd
+    title: "CI/CD tushunchalari va DORA metrikalari"
+    theory: |
+      CI — har push'da avtomatik build va test, muammolar bir necha daqiqada topiladi. CD: Continuous Delivery — har o'zgarish deploy'ga tayyor artefakt (deploy tugma bilan); Continuous Deployment — avtomatik production'ga. Maqsad: kichik, tez-tez, qaytariladigan o'zgarishlar.
+      DORA 4 metrikasi: deploy chastotasi, lead time (commit → prod), change failure rate, MTTR (tiklanish vaqti). Yaxshi pipeline — tez (< 10 daq), ishonchli (flaky testlarsiz), xavfsiz.
+    task: |
+      1) Hozirgi qo'lda deploy jarayoningizni qadamma-qadam yozing va har qadamga vaqt qo'ying.
+      2) Qaysi qadamlar avtomatlashtirilishi mumkinligini belgilang.
+      3) Delivery va Deployment farqini o'z loyihangiz misolida yozing.
+      4) DORA metrikalarini o'z botingiz uchun hozir qanday ekanini taxmin qiling.
+    done: "Qo'lda jarayon va uning avtomatlashtirish rejasi jurnalda."
+    resources:
+      - {title: "Martin Fowler — Continuous Integration", url: "https://martinfowler.com/articles/continuousIntegration.html"}
+      - {title: "DORA — metrics", url: "https://dora.dev/guides/dora-metrics-four-keys/"}
+    quiz:
+      - q: "Continuous Delivery va Deployment farqi?"
+        options: ["Farqi yo'q", "Delivery'da prod'ga chiqish qo'lda tasdiqlanadi; Deployment'da avtomatik", "Deployment'da test yo'q", "Delivery faqat CI"]
+        answer: 1
+        why: "Ikkalasida ham artefakt doim tayyor."
+      - q: "MTTR nima?"
+        options: ["Testlar vaqti", "Incident'dan tiklanishgacha o'rtacha vaqt", "Merge vaqti", "Build hajmi"]
+        answer: 1
+        why: "Mean Time To Recovery."
+    hardcore:
+      - "Bot repo'si tarixidan (git log) haqiqiy lead time va deploy chastotasini hisoblovchi skript yozing (taglar asosida)."
+
+  - key: gha-02-anatomy
+    title: "GitHub Actions anatomiyasi"
+    theory: |
+      `.github/workflows/*.yml`: `on` (push, pull_request, schedule, workflow_dispatch, release) → `jobs` (default parallel, `needs` bilan ketma-ket) → `steps` (`uses:` tayyor action yoki `run:` shell). `runs-on: ubuntu-latest` — GitHub'ning vaqtinchalik VM'i; har job toza muhitda.
+      Action versiyasini qotiring (`actions/checkout@v4`, eng xavfsizi — commit SHA bilan). Loglar Actions tab'da; `workflow_dispatch` — qo'lda ishga tushirish tugmasi.
+    task: |
+      1) `hello.yml`: push va workflow_dispatch'da `uname -a`, `python --version`, `env | sort`.
+      2) Ikki job: `a` va `b` (`needs: a`) — grafni ko'ring.
+      3) `schedule: cron: '0 5 * * 1'` qo'shing (UTC ekanini unutmang).
+      4) Runner'da qaysi vositalar o'rnatilganini runner-images hujjatidan toping.
+    done: "Workflow yashil, ikki job ketma-ket."
+    resources:
+      - {title: "GitHub Docs — Workflow syntax", url: "https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions"}
+      - {title: "GitHub Actions Tutorial (TechWorld with Nana)", url: "https://www.youtube.com/watch?v=R8_veQiYBjI"}
+    quiz:
+      - q: "Default holatda bir workflow'dagi joblar qanday ishlaydi?"
+        options: ["Ketma-ket", "Parallel", "Tasodifiy", "Bitta VM'da"]
+        answer: 1
+        why: "`needs` bilan bog'liqlik qo'yiladi."
+      - q: "`schedule` cron vaqti qaysi zonada?"
+        options: ["Repo egasining zonasida", "UTC", "Toshkent", "Runner zonasida"]
+        answer: 1
+        why: "Toshkent 09:00 = UTC 04:00."
+    hardcore:
+      - "`act` (nektos/act) bilan workflow'ni lokal Docker'da ishga tushirib, GitHub natijasi bilan solishtiring."
+
+  - key: gha-03-first-ci
+    title: "Birinchi CI: lint va test"
+    theory: |
+      Python CI: `actions/checkout` → `actions/setup-python` (`cache: pip`) → `pip install -r requirements-dev.txt` → `ruff check .` → `pytest -q`. Tez yiqiladigan qadamlar (lint) oldinda.
+      PR'da CI natijasi status check bo'lib ko'rinadi; branch protection'da majburiy qilinsa — qizil PR merge bo'lmaydi. Bu jamoaning eng muhim himoya chizig'i.
+    task: |
+      1) Bot repo'siga `ci.yml`: ruff + pytest.
+      2) Ataylab ruff xatosi bilan PR oching — qizil, tuzating — yashil.
+      3) Branch protection'da CI'ni majburiy status check qiling.
+      4) README'ga CI badge qo'shing.
+    done: "Qizil PR merge bo'lmaydi."
+    resources:
+      - {title: "GitHub Docs — Building and testing Python", url: "https://docs.github.com/en/actions/use-cases-and-examples/building-and-testing/building-and-testing-python"}
+    quiz:
+      - q: "CI'da lint nima uchun testlardan oldin?"
+        options: ["Majburiy", "Tez va arzon — oddiy xatolarda uzoq testlarni kutmaslik", "Chiroyli", "Farqi yo'q"]
+        answer: 1
+        why: "Fail fast."
+      - q: "CI natijasi merge'ni bloklashi uchun nima kerak?"
+        options: ["Hech narsa", "Branch protection'da majburiy status check", "Badge", "Secret"]
+        answer: 1
+        why: "Aks holda faqat ma'lumot."
+    hardcore:
+      - "pytest coverage hisobotini artefakt sifatida saqlang va coverage 70% dan tushsa CI'ni yiqiting."
+
+  - key: gha-04-matrix
+    title: "Matrix, cache va artifacts"
+    theory: |
+      `strategy.matrix` — bir job'ni bir nechta kombinatsiyada (Python 3.11/3.12, OS) parallel ishlatish; `fail-fast`, `include/exclude`. Cache: setup-python'ning `cache: pip` yoki `actions/cache` (kalit = lock fayl xeshi). Artifacts: `actions/upload-artifact` — joblar orasida yoki yuklab olish uchun fayllar (hisobotlar, build natijalari).
+      `concurrency: {group: ci-${{ github.ref }}, cancel-in-progress: true}` — bir branch'ga yangi push eski run'ni bekor qiladi.
+    task: |
+      1) Python 3.11 va 3.12 matrix.
+      2) pip cache — 1- va 2-run vaqtini solishtiring.
+      3) pytest junit XML'ni artifact qilib yuklang va yuklab oling.
+      4) concurrency qo'shib, ketma-ket 3 push qiling — eskilari bekor bo'lishini ko'ring.
+    done: "Cache bilan CI vaqti sezilarli qisqardi."
+    resources:
+      - {title: "GitHub Docs — Caching dependencies", url: "https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/caching-dependencies-to-speed-up-workflows"}
+    quiz:
+      - q: "Cache kaliti nimaga bog'lanishi kerak?"
+        options: ["Sanaga", "Dependency lock fayl xeshiga", "Branch nomiga faqat", "Tasodifiy"]
+        answer: 1
+        why: "Dependency o'zgarsa cache yangilanadi."
+      - q: "Bir PR'ga ketma-ket push'larda eski run'larni bekor qilish?"
+        options: ["timeout-minutes", "concurrency + cancel-in-progress", "if: always()", "continue-on-error"]
+        answer: 1
+        why: "Runner vaqti tejaladi."
+    hardcore:
+      - "Matrix'ni dinamik qiling: birinchi job JSON qaytarsin (o'zgargan papkalar), ikkinchi job `fromJSON` bilan faqat o'zgargan qismlarni testlasin."
+
+  - key: gha-05-services
+    title: "Service containers bilan integration test"
+    theory: |
+      `services:` — job davomida yonma-yon ishlaydigan konteynerlar (Postgres, Redis). Healthcheck `options: --health-cmd pg_isready`, port mapping, env. Ilova testlari haqiqiy Postgres bilan — SQLite'da ko'rinmaydigan xatolarni (tiplar, constraint'lar) topadi.
+      Migratsiyalarni CI'da ishga tushirish (`alembic upgrade head`) — production'dan oldin migratsiya xatolarini ushlaydi.
+    task: |
+      1) CI'ga Postgres 16 service qo'shing.
+      2) `alembic upgrade head` + repo funksiyalari uchun integration test.
+      3) Testlarni haqiqiy Postgres'ga qarshi ishga tushiring.
+      4) Migratsiyani `downgrade base` + `upgrade head` bilan ham tekshiring.
+    done: "Integration testlar CI'da haqiqiy Postgres bilan o'tadi."
+    resources:
+      - {title: "GitHub Docs — Creating PostgreSQL service containers", url: "https://docs.github.com/en/actions/use-cases-and-examples/using-containerized-services/creating-postgresql-service-containers"}
+    quiz:
+      - q: "Nima uchun SQLite emas, haqiqiy Postgres bilan test?"
+        options: ["Tezroq", "Production'dagi DB xatti-harakati (tiplar, constraint'lar, SQL dialekt) bir xil bo'lishi uchun", "Majburiy", "Arzonroq"]
+        answer: 1
+        why: "Dev/prod parity."
+      - q: "Service container tayyorligini kutish uchun?"
+        options: ["sleep 30", "health-cmd options", "needs", "Hech narsa"]
+        answer: 1
+        why: "Job konteyner healthy bo'lguncha kutadi."
+    hardcore:
+      - "Testcontainers (Python) bilan testlarni CI va lokal muhitda bir xil yo'l bilan Postgres ko'taradigan qiling."
+
+  - key: gha-06-lab
+    kind: lab
+    title: "LAB: qizil pipeline'ni tuzatish"
+    theory: |
+      CI xatolarini o'qish: avval qaysi step yiqilganini toping, logni yuqoridan emas, birinchi xato qatoridan o'qing. Odatiy sabablar: lokalda o'rnatilgan, lekin requirements'da yo'q paket; vaqt zonasi/locale farqi; tartibga bog'liq testlar; tarmoqqa bog'liq testlar (flaky); secret mavjud emas (fork PR'larda).
+      Debug: `ACTIONS_STEP_DEBUG` secret = true, `tmate` action (SSH bilan runner'ga kirish), qadamni lokal `act` bilan takrorlash.
+    task: |
+      O'zingiz buzing va har birini faqat CI loglaridan toping:
+      1) requirements'dan bitta paketni olib tashlang.
+      2) Vaqt zonasiga bog'liq test yozing (`datetime.now()` sanaga qarab).
+      3) Tasodifiy (random) yiqiladigan flaky test.
+      4) Mavjud bo'lmagan secret'ga bog'liq qadam.
+      5) Har biri uchun "belgi → sabab → tuzatish" jadvali.
+    done: "4 ta holatni loglardan topdingiz va tuzatdingiz."
+    resources:
+      - {title: "GitHub Docs — Enabling debug logging", url: "https://docs.github.com/en/actions/monitoring-and-troubleshooting-workflows/troubleshooting-workflows/enabling-debug-logging"}
+    quiz:
+      - q: "Lokalda o'tadi, CI'da 'ModuleNotFoundError'. Ehtimoliy sabab?"
+        options: ["GitHub buzilgan", "Paket lokal muhitda bor, lekin requirements'da yo'q", "Python versiyasi", "Internet"]
+        answer: 1
+        why: "Toza muhit — CI'ning qiymati."
+      - q: "Flaky test bilan nima qilish kerak?"
+        options: ["Retry qo'shib unutish", "Sababini topib tuzatish yoki karantinga olib, vazifa ochish", "O'chirish", "E'tiborsiz qoldirish"]
+        answer: 1
+        why: "Flaky testlar CI'ga ishonchni yo'qotadi."
+    hardcore:
+      - "Testlarni `pytest-randomly` bilan tasodifiy tartibda ishga tushirib, tartibga bog'liq testlarni toping va tuzating."
+
+  - key: gha-07-expressions
+    title: "Expressions, contexts, shartlar va outputs"
+    theory: |
+      `${{ }}` — ifodalar: contexts (`github.ref`, `github.sha`, `github.event_name`, `env`, `secrets`, `matrix`, `needs`). Shartlar: `if: github.ref == 'refs/heads/main'`, `if: failure()`, `if: always()`.
+      Joblar orasida ma'lumot: step `echo "tag=v1" >> "$GITHUB_OUTPUT"` → job `outputs:` → keyingi job `needs.build.outputs.tag`. `$GITHUB_ENV` — keyingi step'lar uchun env. Xavfsizlik: `${{ github.event.pull_request.title }}` ni to'g'ridan-to'g'ri `run:` ga qo'ymang — script injection!
+    task: |
+      1) Deploy job faqat main'da va push hodisasida ishlasin.
+      2) build job image tag'ini output qilib, deploy job'ga uzatsin.
+      3) Xatoda Telegram'ga xabar yuboruvchi `if: failure()` step.
+      4) PR sarlavhasini xavfsiz ishlatish: env orqali (`env: TITLE: ...` → `"$TITLE"`).
+    done: "Deploy faqat main'da, tag joblar orasida uzatiladi, xatoda alert keladi."
+    resources:
+      - {title: "GitHub Docs — Contexts", url: "https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/accessing-contextual-information-about-workflow-runs"}
+      - {title: "GitHub — Security hardening for Actions", url: "https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions"}
+    quiz:
+      - q: "Nima uchun `run: echo ${{ github.event.issue.title }}` xavfli?"
+        options: ["Sekin", "Sarlavha ichidagi shell buyruqlari bajarilishi mumkin (script injection)", "Ishlamaydi", "Xavfsiz"]
+        answer: 1
+        why: "Ifoda shell skriptga matn sifatida qo'yiladi. env orqali bering."
+      - q: "Step natijasini keyingi job'ga uzatish?"
+        options: ["echo", "$GITHUB_OUTPUT + job outputs + needs", "Artifact shart", "Imkonsiz"]
+        answer: 1
+        why: "Kichik qiymatlar uchun outputs, fayllar uchun artifact."
+    hardcore:
+      - "Workflow'ni zizmor yoki actionlint bilan tekshirib, topilgan xavfsizlik ogohlantirishlarini tuzating."
+
+  - key: gha-08-docker-build
+    title: "Actions'da Docker image build va push"
+    theory: |
+      Rasmiy action'lar: `docker/setup-buildx-action`, `docker/login-action` (GHCR uchun `GITHUB_TOKEN` yetarli), `docker/metadata-action` (avtomatik taglar: sha, branch, semver tag'dan), `docker/build-push-action` (`cache-from/to: type=gha`).
+      `permissions: {contents: read, packages: write}` — token huquqlarini minimal qiling. PR'da faqat build (push yo'q), main'da build + push.
+    task: |
+      1) `build.yml`: metadata-action bilan `sha-<short>`, `main`, semver taglar.
+      2) gha cache — ikki build vaqtini solishtiring.
+      3) PR'da `push: false`.
+      4) GHCR'da package'ni repo'ga bog'lang, VPS'dan pull qiling.
+    done: "Har main commit'ga mos image GHCR'da."
+    resources:
+      - {title: "docker/build-push-action", url: "https://github.com/docker/build-push-action"}
+      - {title: "docker/metadata-action", url: "https://github.com/docker/metadata-action"}
+    quiz:
+      - q: "GHCR'ga GITHUB_TOKEN bilan push uchun?"
+        options: ["Hech narsa", "permissions: packages: write", "PAT majburiy", "secrets: write"]
+        answer: 1
+        why: "Token huquqlari permissions bilan beriladi."
+      - q: "Nima uchun PR'da image push qilinmaydi?"
+        options: ["Ishlamaydi", "Tekshirilmagan kod registry'ga tushmasin va fork'larda sir yo'q", "Sekin", "Majburiy"]
+        answer: 1
+        why: "Build — tekshiruv, push — reliz."
+    hardcore:
+      - "Build'dan keyin image'ni Trivy bilan skanerlab, CRITICAL topilsa push'ni to'xtating (build → scan → push tartibi)."
+
+  - key: gha-09-secrets
+    title: "Secrets, variables va environments"
+    theory: |
+      Repository/environment secrets — loglarda avtomatik maskalanadi; variables — maxfiy bo'lmagan sozlamalar. Environments (`staging`, `production`): o'z secret'lari, protection rules (required reviewers — qo'lda tasdiqlash, wait timer, faqat ma'lum branch'lar).
+      Fork'dan kelgan PR'larda secret'lar berilmaydi (xavfsizlik). Sirni loglarga chiqarmang; `::add-mask::` dinamik qiymatlar uchun.
+    task: |
+      1) `production` environment yarating, o'zingizni required reviewer qiling, faqat main branch.
+      2) SSH_HOST, SSH_USER, SSH_KEY secret'larini environment'ga qo'shing.
+      3) Deploy job'ga `environment: production` — tasdiqlash so'ralishini ko'ring.
+      4) Secret'ni `echo` qilishga urinib, maskalanishini ko'ring.
+    done: "Production deploy qo'lda tasdiqlashdan keyin ishlaydi."
+    resources:
+      - {title: "GitHub Docs — Using secrets", url: "https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions"}
+      - {title: "GitHub Docs — Managing environments", url: "https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment"}
+    quiz:
+      - q: "Production deploy'ga qo'lda tasdiqlash qo'shish?"
+        options: ["if: manual", "Environment + required reviewers", "sleep", "Imkonsiz"]
+        answer: 1
+        why: "Environment protection rules."
+      - q: "Fork PR'da secret'lar nima uchun mavjud emas?"
+        options: ["Xato", "Begona kod sirlaringizni o'g'irlamasligi uchun", "Pullik", "Tezlik"]
+        answer: 1
+        why: "pull_request_target bilan ehtiyot bo'ling."
+    hardcore:
+      - "`staging` va `production` environment'lari bilan bir xil deploy job'ni matrix yoki reusable workflow orqali ikki muhitga ishlatadigan qiling."
+
+  - key: gha-10-deploy
+    title: "VPS'ga SSH orqali avtomatik deploy"
+    theory: |
+      Oddiy va ishonchli naqsh: Actions → SSH (alohida deploy kaliti, faqat deploy user) → serverda `deploy.sh <tag>` (pull + up + health check + rollback). known_hosts'ni secret qilib saqlang (StrictHostKeyChecking'ni o'chirmang!).
+      Kalitni `authorized_keys` da `command="/srv/bot/deploy.sh"` bilan cheklash mumkin — CI faqat deploy qila oladi, boshqa hech narsa.
+    task: |
+      1) Serverda faqat CI uchun yangi ed25519 kalit; public'ni deploy user'ga.
+      2) Secrets: SSH_KEY, SSH_HOST, SSH_KNOWN_HOSTS (`ssh-keyscan` natijasi).
+      3) `deploy.yml`: build tugagach (`needs`) serverga SSH qilib `deploy.sh ${{ needs.build.outputs.tag }}`.
+      4) main'ga merge → tasdiqlash → bot avtomatik yangilanishini kuzating.
+    done: "Merge'dan production'gacha qo'lsiz (faqat tasdiqlash tugmasi)."
+    resources:
+      - {title: "GitHub Docs — Deploying with GitHub Actions", url: "https://docs.github.com/en/actions/use-cases-and-examples/deploying/deploying-with-github-actions"}
+    quiz:
+      - q: "CI'da `StrictHostKeyChecking=no` ning xavfi?"
+        options: ["Yo'q", "Soxta server (MITM) deploy kalitingiz va kodingizni qabul qilishi mumkin", "Sekin", "Ishlamaydi"]
+        answer: 1
+        why: "known_hosts'ni secret sifatida bering."
+      - q: "CI kaliti bilan serverda faqat deploy qilishni ta'minlash?"
+        options: ["Parol", "authorized_keys'da `command=` cheklovi", "Root kalit", "Firewall"]
+        answer: 1
+        why: "Kalit oshkor bo'lsa ham zarar cheklangan."
+    hardcore:
+      - "Deploy holatini GitHub Deployments API'ga yozing (in_progress → success/failure) — repo sahifasida 'Deployments' bo'limida ko'rinsin."
+
+  - key: gha-11-rollback
+    title: "Deploy'dan keyingi tekshiruv va rollback"
+    theory: |
+      Deploy — konteyner ko'tarilishi emas, ilova haqiqatan ishlashi. Smoke test: deploy'dan keyin N soniya davomida health endpoint, asosiy funksiya tekshiruvi. Muvaffaqiyatsiz bo'lsa — avtomatik rollback oldingi tag'ga va alert.
+      Rollback strategiyalari: oldingi artefaktni qayta deploy (eng oddiy), blue-green (eski versiya hali ishlab turibdi), feature flag (kodni qaytarmasdan funksiyani o'chirish). DB migratsiyalari rollback'ni murakkablashtiradi — orqaga mos (expand/contract) migratsiyalar yozing.
+    task: |
+      1) deploy.sh'ga 30 soniyalik smoke test va avtomatik rollback.
+      2) Ataylab yiqiladigan versiyani merge qilib, rollback va Telegram alertni ko'ring.
+      3) Qo'lda rollback workflow (`workflow_dispatch` + tag input).
+      4) Expand/contract migratsiya naqshini jurnalga misol bilan yozing.
+    done: "Buzilgan reliz 2 daqiqa ichida avtomatik qaytarildi."
+    resources:
+      - {title: "Martin Fowler — Blue Green Deployment", url: "https://martinfowler.com/bliki/BlueGreenDeployment.html"}
+      - {title: "Martin Fowler — Parallel Change (expand/contract)", url: "https://martinfowler.com/bliki/ParallelChange.html"}
+    quiz:
+      - q: "Ustun nomini o'zgartiruvchi migratsiya rollback'ni qanday buzadi?"
+        options: ["Buzmaydi", "Eski kod yangi sxema bilan ishlamaydi — orqaga mos migratsiya kerak", "Tezlashtiradi", "Faqat test'da"]
+        answer: 1
+        why: "Expand (yangi ustun qo'shish) → kod → contract (eskisini o'chirish)."
+      - q: "Feature flag'ning rollback'dagi afzalligi?"
+        options: ["Yo'q", "Deploy qilmasdan funksiyani darhol o'chirish mumkin", "Tezroq build", "Arzon"]
+        answer: 1
+        why: "Kod va reliz ajraladi."
+    hardcore:
+      - "Botga oddiy feature flag tizimi qo'shing (DB jadvali + admin buyruq) va yangi funksiyani flag ortida chiqarib, deploy'siz o'chirib-yoqib ko'rsating."
+
+  - key: gha-12-lab
+    kind: lab
+    title: "LAB: deploy muvaffaqiyatsiz — debug"
+    theory: |
+      Deploy xatolari ko'pincha CI va server chegarasida: SSH kalit/known_hosts, server'da image pull uchun login yo'q (private GHCR), disk to'la, port band, .env'da yangi o'zgaruvchi yo'q, migratsiya yiqildi. Tartib: Actions logi → serverdagi deploy.sh logi → `docker compose ps/logs` → healthcheck holati.
+    task: |
+      Har holatni yarating va topib tuzating:
+      1) known_hosts secret'ini noto'g'ri qiling.
+      2) Serverda `docker logout ghcr.io` (private image pull yiqiladi).
+      3) Yangi majburiy env o'zgaruvchi qo'shib, serverdagi .env'ga yozmang.
+      4) Diskni deyarli to'ldiring (`fallocate`) va deploy qiling.
+      5) Har biri uchun runbook yozuvi.
+    done: "4 ta deploy xatosi runbook'ingizda."
+    resources:
+      - {title: "GitHub Docs — Troubleshooting workflows", url: "https://docs.github.com/en/actions/monitoring-and-troubleshooting-workflows/troubleshooting-workflows"}
+    quiz:
+      - q: "Yangi env o'zgaruvchi qo'shilganda deploy yiqilishining oldini olish?"
+        options: ["Hech narsa", "Ilova startda majburiy konfigni tekshirsin va .env.example'ni yangilash; deploy oldi tekshiruv", "Defaultni bo'sh qoldirish", "Konfigni kodga yozish"]
+        answer: 1
+        why: "Fail fast — aniq xabar bilan."
+      - q: "Serverda private GHCR image pull qilinmayapti. Nima tekshiriladi?"
+        options: ["DNS", "Serverdagi `docker login ghcr.io` (token muddati va huquqi)", "Firewall", "CPU"]
+        answer: 1
+        why: "Token muddati o'tgan bo'lishi mumkin."
+    hardcore:
+      - "Deploy oldi 'preflight' qadam yozing: disk joyi, .env to'liqligi (example bilan solishtirish), image mavjudligi — biror shart bajarilmasa deploy boshlanmasin."
+
+  - key: gha-13-reusable
+    title: "Reusable workflows"
+    theory: |
+      Bir xil pipeline'ni ko'p repo'da takrorlamaslik: `on: workflow_call` bilan e'lon qilingan workflow (inputs, secrets, outputs) boshqa workflow'dan `uses: org/repo/.github/workflows/build.yml@v1` bilan chaqiriladi. Markaziy "pipeline repo" — jamoada standart.
+      ICORP yoki Integra Team'dagi bir nechta bot/integratsiya loyihasiga bir xil build+deploy berish usuli aynan shu.
+    task: |
+      1) `ci-templates` repo: `python-ci.yml` va `docker-build.yml` reusable workflow'lar.
+      2) Bot repo'si va opsctl repo'si ulardan foydalansin.
+      3) inputs (python-version, image-name) va secrets (`secrets: inherit`).
+      4) Template'ni tag (v1) bilan versiyalang.
+    done: "Ikki repo bitta reusable workflow'dan foydalanadi."
+    resources:
+      - {title: "GitHub Docs — Reusing workflows", url: "https://docs.github.com/en/actions/sharing-automations/reusing-workflows"}
+    quiz:
+      - q: "Reusable workflow qaysi trigger bilan e'lon qilinadi?"
+        options: ["on: reuse", "on: workflow_call", "on: import", "on: push"]
+        answer: 1
+        why: "Chaqiruvchi `uses:` bilan ulaydi."
+      - q: "Nima uchun template'ni @main emas, @v1 bilan chaqirish yaxshi?"
+        options: ["Farqi yo'q", "Template o'zgarishi barcha repo'larni kutilmaganda buzmasligi uchun", "Tezroq", "Majburiy"]
+        answer: 1
+        why: "Versiyalangan bog'liqlik."
+    hardcore:
+      - "Template'ga 'deploy' reusable workflow qo'shing: environment nomi input, ichida preflight + deploy + smoke test + rollback."
+
+  - key: gha-14-composite
+    title: "Composite actions"
+    theory: |
+      Composite action (`action.yml`, `runs: using: composite`) — takrorlanadigan step'lar to'plami: masalan "Python o'rnatish + cache + dependency'lar". Reusable workflow — butun job'lar, composite action — step'lar. Lokal (`uses: ./.github/actions/setup`) yoki alohida repo'da.
+      O'z action'ingizni yozish — boshqalar ishlatishi mumkin bo'lgan ochiq manbali hissa uchun yaxshi boshlang'ich.
+    task: |
+      1) `.github/actions/python-setup/action.yml`: setup-python + cache + install.
+      2) ci.yml'da shu action'dan foydalaning.
+      3) `telegram-notify` composite action: inputs (token, chat_id, text).
+      4) Uni alohida public repo qilib, tag bilan chiqaring.
+    done: "Composite action'lar ishlaydi, biri public repo'da."
+    resources:
+      - {title: "GitHub Docs — Creating a composite action", url: "https://docs.github.com/en/actions/sharing-automations/creating-actions/creating-a-composite-action"}
+    quiz:
+      - q: "Composite action va reusable workflow farqi?"
+        options: ["Bir xil", "Composite — step'lar to'plami; reusable workflow — butun job'lar", "Composite faqat Docker", "Reusable faqat lokal"]
+        answer: 1
+        why: "Qayta ishlatish darajasi har xil."
+      - q: "Composite action ichida `run:` step uchun nima majburiy?"
+        options: ["Hech narsa", "`shell:` ko'rsatish", "`id:`", "`if:`"]
+        answer: 1
+        why: "Composite'da shell default emas."
+    hardcore:
+      - "Docker container action yozing (Dockerfile asosida) — masalan Markdown'dagi buzilgan linklarni tekshiruvchi — va composite bilan farqini tushuntiring."
+
+  - key: gha-15-release
+    title: "Release automation: tag, changelog, release-please"
+    theory: |
+      Conventional Commits + `release-please`: main'dagi commitlardan avtomatik release PR (versiya, CHANGELOG); PR merge qilinganda tag va GitHub Release yaratiladi. Tag → image `:v1.2.3` → production. Muqobil: semantic-release.
+      Release artefaktlari: image, wheel, SBOM, release notes. "Qaysi versiya production'da?" savoliga doim aniq javob bo'lishi kerak.
+    task: |
+      1) Bot repo'siga release-please workflow qo'shing.
+      2) `feat:` va `fix:` commitlar qiling — release PR paydo bo'lishini kuzating.
+      3) Merge qiling: tag + Release + CHANGELOG.
+      4) Tag push'da image `vX.Y.Z` tegi bilan build bo'lsin.
+    done: "Release avtomatik, image versiya tegi bilan."
+    resources:
+      - {title: "release-please-action", url: "https://github.com/googleapis/release-please-action"}
+    quiz:
+      - q: "release-please versiyani qanday aniqlaydi?"
+        options: ["Qo'lda", "Conventional Commits turlariga qarab (feat → minor, fix → patch)", "Sanaga qarab", "Tasodifiy"]
+        answer: 1
+        why: "Commit xabarlari — versiyalash manbai."
+      - q: "Production'dagi versiyani bilish nima uchun muhim?"
+        options: ["Chiroyli", "Incident'da qaysi o'zgarish sabab bo'lganini va nimaga qaytishni bilish uchun", "Majburiy", "Tezlik"]
+        answer: 1
+        why: "Kuzatiluvchanlik."
+    hardcore:
+      - "Botga `/version` buyrug'i qo'shing: build vaqtida image'ga yozilgan versiya, commit SHA va build sanasini qaytarsin (OCI label'lar + env)."
+
+  - key: gha-16-self-hosted
+    title: "Self-hosted runner va uning xavfsizligi"
+    theory: |
+      Self-hosted runner — o'z serveringizda job'larni bajarish: ichki tarmoqqa kirish, maxsus jihozlar, bepul daqiqalar. Xavf: public repo'da begona PR runner'ingizda kod bajarishi mumkin — self-hosted runner'larni faqat private repo'larda ishlating.
+      Yaxshi amaliyot: alohida user, ephemeral runner (har job'dan keyin tozalanadi), konteyner ichida, label'lar bilan (`runs-on: [self-hosted, linux, vps]`).
+    task: |
+      1) Alohida VM yoki VPS'da `runner` user bilan GitHub runner o'rnating (systemd servis).
+      2) Private test repo'da `runs-on: self-hosted` job ishlating.
+      3) Runner qaysi user bilan va qaysi papkada ishlashini tekshiring.
+      4) Public repo'da self-hosted runner xavfini jurnalga yozing.
+    done: "Runner ishlaydi, xavfsizlik chegaralari hujjatlangan."
+    resources:
+      - {title: "GitHub Docs — About self-hosted runners", url: "https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners"}
+    quiz:
+      - q: "Self-hosted runner'ni public repo'da ishlatish xavfi?"
+        options: ["Yo'q", "Fork PR orqali begona kod serveringizda bajarilishi mumkin", "Sekin", "Pullik"]
+        answer: 1
+        why: "GitHub ham buni tavsiya qilmaydi."
+      - q: "Ephemeral runner nima?"
+        options: ["Tez runner", "Har job'dan keyin tozalanadigan/qayta yaratiladigan runner", "GPU runner", "Windows runner"]
+        answer: 1
+        why: "Job'lar orasida qoldiq va sir oqishi bo'lmaydi."
+    hardcore:
+      - "Runner'ni Docker konteynerida ephemeral rejimda (`--ephemeral`) ishga tushirib, har job'dan keyin avtomatik qayta ro'yxatdan o'tadigan qiling."
+
+  - key: gha-17-oidc
+    title: "OIDC va least-privilege tokenlar"
+    theory: |
+      Uzoq muddatli cloud kalitlarini (AWS access key) secret'da saqlash — xavf. OIDC: GitHub har job uchun qisqa muddatli token beradi, cloud (AWS IAM role) unga ishonadi va vaqtinchalik huquq beradi — saqlanadigan kalit yo'q. J3 AWS bosqichida aynan shuni ishlatasiz.
+      `permissions:` — GITHUB_TOKEN huquqlarini minimal qiling (`contents: read` default, kerak joyda `packages: write`, `id-token: write` OIDC uchun). Org darajasida default'ni read-only qiling.
+    task: |
+      1) Barcha workflow'laringizga aniq `permissions:` bloklarini qo'shing.
+      2) OIDC token'ni olib, uning claim'larini (sub, aud, repository, ref) dekodlab ko'ring (`ACTIONS_ID_TOKEN_REQUEST_URL` orqali, jwt'ni base64 decode).
+      3) `sub` claim nima uchun trust policy'da muhimligini yozing (qaysi repo/branch kira oladi).
+      4) Third-party action'larni commit SHA bilan qotiring.
+    done: "Hamma workflow'da minimal permissions; OIDC claim'larini tushunasiz."
+    resources:
+      - {title: "GitHub Docs — About security hardening with OIDC", url: "https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/about-security-hardening-with-openid-connect"}
+    quiz:
+      - q: "OIDC'ning access key'dan asosiy afzalligi?"
+        options: ["Tezroq", "Saqlanadigan uzoq muddatli sir yo'q — har job uchun qisqa muddatli token", "Bepul", "Oddiyroq"]
+        answer: 1
+        why: "Oshkor bo'ladigan narsa qolmaydi."
+      - q: "OIDC token olish uchun qaysi permission kerak?"
+        options: ["contents: write", "id-token: write", "packages: read", "actions: write"]
+        answer: 1
+        why: "Aks holda token so'rab bo'lmaydi."
+    hardcore:
+      - "Third-party action'larni SHA bilan qotirib, Dependabot'ni github-actions ekotizimi uchun yoqing — yangilanishlar PR bo'lib kelsin."
+
+  - key: gha-18-project
+    kind: project
+    title: "LOYIHA: PR → test → image → deploy → rollback"
+    theory: |
+      Modul yakuni: bot uchun to'liq delivery pipeline — kod sifati, image, tasdiqlangan avtomatik deploy, smoke test va avtomatik rollback. Bu portfolio'ngizdagi eng kuchli loyihalardan biri bo'ladi.
+    task: |
+      1) PR: ruff + pytest (Postgres service bilan) + docker build (push'siz).
+      2) main: build + trivy + push (sha tag) → production environment (tasdiqlash) → SSH deploy → smoke → rollback.
+      3) release-please bilan versiyali relizlar.
+      4) Reusable workflow'lar va minimal permissions.
+      5) README: pipeline diagrammasi (mermaid), qanday rollback qilish.
+    done: "To'liq oqim ishlaydi; ataylab buzilgan reliz avtomatik qaytarildi."
+    resources:
+      - {title: "milanm — Learn CI/CD", url: "https://github.com/milanm/DevOps-Roadmap#9-learn-cicd"}
+      - {title: "GfG — What is CI/CD", url: "https://www.geeksforgeeks.org/devops/what-is-ci-cd/"}
+    quiz:
+      - q: "Pipeline'da image skanerlash qayerda bo'lishi kerak?"
+        options: ["Deploy'dan keyin", "Build'dan keyin, push/deploy'dan oldin", "Hech qayerda", "Faqat haftada bir"]
+        answer: 1
+        why: "Zaif image registry'ga va prod'ga tushmasin."
+    hardcore:
+      - "Pipeline uchun DORA dashboard: GitHub API'dan oxirgi 30 kunlik deploy soni, lead time va muvaffaqiyatsiz deploy foizini hisoblab, README'ga avtomatik yozadigan haftalik workflow."

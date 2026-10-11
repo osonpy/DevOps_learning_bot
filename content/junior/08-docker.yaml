@@ -1,0 +1,467 @@
+# J2 · Docker chuqur · 15–17-hafta (18 dars)
+lessons:
+  - key: docker-01-intro
+    title: "Konteyner vs VM va Docker arxitekturasi"
+    theory: |
+      VM — to'liq OS + hypervisor (og'ir, sekin start). Konteyner — host kernel'ini bo'lishuvchi izolyatsiyalangan jarayon (yengil, soniyada start). Docker: CLI → dockerd (API) → containerd → runc (OCI runtime) → Linux namespaces + cgroups.
+      Image — o'zgarmas shablon (layerlar), container — image'dan ishga tushgan nusxa. Registry — image'lar ombori (Docker Hub, GHCR). "Mening kompyuterimda ishlaydi" muammosini aynan shu hal qiladi.
+    task: |
+      1) Docker'ni rasmiy repo'dan o'rnating (apt'dagi docker.io emas), `deploy` ni docker guruhiga qo'shing.
+      2) `docker version` (client/server), `docker info` ni o'qing.
+      3) `docker run hello-world` — chiqishdagi har qadamni jurnalga tushuntiring.
+      4) `ps aux | grep -E 'dockerd|containerd'` — arxitektura qismlarini ko'ring.
+    done: "Docker arxitekturasini CLI'dan runc'gacha diagramma bilan tushuntira olasiz."
+    resources:
+      - {title: "Docker docs — Install on Ubuntu", url: "https://docs.docker.com/engine/install/ubuntu/"}
+      - {title: "GfG — Introduction to Docker", url: "https://www.geeksforgeeks.org/devops/introduction-to-docker/"}
+    quiz:
+      - q: "Konteynerning VM'dan asosiy farqi?"
+        options: ["Har doim xavfsizroq", "Host kernel'ini bo'lishadi — alohida OS yuklanmaydi", "Faqat Windows'da", "Tarmoqsiz"]
+        answer: 1
+        why: "Shuning uchun yengil va tez."
+      - q: "`docker` guruhiga qo'shilish xavfi?"
+        options: ["Yo'q", "Bu amalda root huquqiga teng", "Sekinlashadi", "Konteyner o'chadi"]
+        answer: 1
+        why: "Docker socket orqali host'ning istalgan joyini mount qilish mumkin."
+    hardcore:
+      - "rootless Docker'ni alohida user uchun o'rnatib, oddiy Docker bilan farqlarini (port < 1024, networking) amalda ko'rsating."
+
+  - key: docker-02-lifecycle
+    title: "Image va container hayot sikli"
+    theory: |
+      `docker pull nginx:1.27`, `docker run -d --name web -p 8080:80 -e KEY=val nginx:1.27`, `docker ps -a`, `docker logs -f web`, `docker exec -it web sh`, `docker stop/start/rm`, `docker rmi`. `--rm` — to'xtaganda o'chirish.
+      Tag'lar: `latest` — shunchaki nom, "eng yangi" degani emas; production'da aniq versiya ishlating. Port: `-p HOST:CONTAINER`, `127.0.0.1:8080:80` — faqat lokal. `docker system df` va `prune` — joy tozalash.
+    task: |
+      1) nginx konteynerini 127.0.0.1:8080 da ishga tushiring, `curl` qiling.
+      2) `docker exec` bilan ichiga kirib index.html'ni o'zgartiring; konteynerni o'chirib qayta yarating — o'zgarish yo'qoldimi?
+      3) `docker logs -f` + bir necha so'rov.
+      4) `docker inspect web | jq '.[0].NetworkSettings'`.
+    done: "Konteyner ichidagi o'zgarish o'chirilganda yo'qolishini o'z ko'zingiz bilan ko'rdingiz."
+    resources:
+      - {title: "Docker docs — Running containers", url: "https://docs.docker.com/engine/containers/run/"}
+    quiz:
+      - q: "`latest` tag nimani kafolatlaydi?"
+        options: ["Eng yangi versiyani", "Hech narsani — bu shunchaki default nom", "Barqarorlikni", "Xavfsizlikni"]
+        answer: 1
+        why: "Production'da aniq versiya yoki digest."
+      - q: "Konteyner ichida yozilgan fayl konteyner o'chirilsa?"
+        options: ["Saqlanadi", "Yo'qoladi (volume bo'lmasa)", "Image'ga yoziladi", "Host'ga ko'chadi"]
+        answer: 1
+        why: "Yozish qatlami konteyner bilan birga o'chadi."
+    hardcore:
+      - "`docker events` ni bir terminalda ochib, boshqasida run/stop/rm qiling va hayot sikli hodisalarini (create, start, die, destroy) jurnalga yozing."
+
+  - key: docker-03-dockerfile
+    title: "Dockerfile: birinchi image"
+    theory: |
+      Asosiy instruksiyalar: `FROM python:3.12-slim`, `WORKDIR /app`, `COPY`, `RUN pip install ...`, `ENV`, `EXPOSE` (hujjat), `USER`, `CMD`/`ENTRYPOINT`. `docker build -t app:0.1 .`.
+      CMD vs ENTRYPOINT: ENTRYPOINT — doim ishlaydigan buyruq, CMD — default argumentlar (run'da almashtiriladi). Exec form `["python", "-m", "app"]` ishlating — shell form'da PID 1 = sh bo'ladi va SIGTERM ilovaga yetmaydi.
+    task: |
+      1) FastAPI ilovangiz uchun Dockerfile yozing va build qiling.
+      2) `docker run -p 127.0.0.1:8000:8000` bilan ishga tushiring.
+      3) Shell form va exec form bilan `docker stop` vaqtini solishtiring (10 s vs tez).
+      4) `docker history app:0.1` — layerlarni ko'ring.
+    done: "Exec form'da `docker stop` darhol to'xtaydi."
+    resources:
+      - {title: "Dockerfile reference", url: "https://docs.docker.com/reference/dockerfile/"}
+      - {title: "GfG — What is Dockerfile", url: "https://www.geeksforgeeks.org/devops/what-is-dockerfile/"}
+    quiz:
+      - q: "Nima uchun `CMD python app.py` (shell form) muammoli?"
+        options: ["Ishlamaydi", "PID 1 sh bo'ladi va SIGTERM ilovaga yetib bormasligi mumkin", "Sekin build", "Xavfsiz emas"]
+        answer: 1
+        why: "Graceful shutdown buziladi — docker stop 10 s kutib KILL qiladi."
+      - q: "EXPOSE nima qiladi?"
+        options: ["Portni ochadi", "Faqat hujjat — qaysi portni ishlatishini bildiradi", "Firewall qoidasi", "Port yo'naltiradi"]
+        answer: 1
+        why: "Haqiqiy publish -p bilan."
+    hardcore:
+      - "ENTRYPOINT skript yozing: migratsiyalarni bajarib, so'ng `exec \"$@\"` bilan CMD'ni ishga tushirsin — nima uchun `exec` muhimligini isbotlang."
+
+  - key: docker-04-cache
+    title: "Layerlar, build cache va .dockerignore"
+    theory: |
+      Har instruksiya — layer. Build cache: instruksiya va uning kirishi o'zgarmasa, layer qayta ishlatiladi; bitta layer o'zgarsa, undan keyingi hammasi qayta quriladi. Shuning uchun tartib: kam o'zgaradigan (OS paketlar, requirements) yuqorida, kod pastda.
+      `.dockerignore` — build context'dan chiqarish (.git, .venv, .env, tests): tezroq build va sirlar image'ga tushmaydi. `RUN apt-get update && apt-get install -y ... && rm -rf /var/lib/apt/lists/*` — bitta layerda.
+    task: |
+      1) Ataylab yomon tartib: `COPY . .` keyin `pip install`. Kodning bir qatorini o'zgartirib build vaqtini o'lchang.
+      2) To'g'ri tartibga o'tkazib, yana o'lchang.
+      3) .dockerignore'siz va bilan build context hajmini solishtiring.
+      4) `.env` image ichiga tushib qolganini `docker run --rm app ls -la` bilan tekshiring.
+    done: "Kod o'zgarganda pip install cache'dan olinadi."
+    resources:
+      - {title: "Docker docs — Build cache", url: "https://docs.docker.com/build/cache/"}
+    quiz:
+      - q: "Nima uchun `COPY requirements.txt` va `pip install` ni `COPY . .` dan oldin qilamiz?"
+        options: ["Xavfsizlik", "Kod o'zgarganda dependency layer cache'dan olinsin", "Docker talab qiladi", "Farqi yo'q"]
+        answer: 1
+        why: "O'zgargan layerdan keyingi hammasi qayta quriladi."
+      - q: ".dockerignore'ning ikki foydasi?"
+        options: ["Image'ni shifrlaydi", "Build tezlashadi va sirlar/keraksiz fayllar image'ga tushmaydi", "Portlarni yopadi", "Logni kamaytiradi"]
+        answer: 1
+        why: "Build context kichrayadi."
+    hardcore:
+      - "BuildKit cache mount (`RUN --mount=type=cache,target=/root/.cache/pip`) bilan dependency o'zgargandagi build vaqtini ham kamaytiring va o'lchovlarni jadvalga yozing."
+
+  - key: docker-05-multistage
+    title: "Multi-stage build va kichik image'lar"
+    theory: |
+      Multi-stage: `FROM python:3.12 AS builder` — kompilyatsiya va wheel'lar; `FROM python:3.12-slim` — faqat runtime va `COPY --from=builder`. Natija: kompilyator va build vositalari production image'da yo'q — kichikroq va xavfsizroq.
+      Base tanlash: slim (Debian, keng moslik), alpine (juda kichik, lekin musl — Python wheel'lari bilan muammo bo'lishi mumkin), distroless (shell yo'q, eng xavfsiz). Kichik image — tez pull, kam zaiflik.
+    task: |
+      1) Naive (`FROM python:3.12`, bir stage, root) Dockerfile va hajmi.
+      2) Multi-stage + slim + non-root versiya va hajmi.
+      3) `docker images` bilan solishtiring — kamida 3x farq.
+      4) `dive app:slim` bilan layerlarni tahlil qiling.
+    done: "Optimallashtirilgan image naive'dan kamida 3 barobar kichik."
+    resources:
+      - {title: "Docker docs — Multi-stage builds", url: "https://docs.docker.com/build/building/multi-stage/"}
+      - {title: "dive", url: "https://github.com/wagoodman/dive"}
+    quiz:
+      - q: "Multi-stage build'ning asosiy foydasi?"
+        options: ["Tezroq ishlaydi", "Build vositalari yakuniy image'ga kirmaydi — kichik va xavfsiz", "Ko'p konteyner", "Avtomatik test"]
+        answer: 1
+        why: "Builder stage tashlab yuboriladi."
+      - q: "Python uchun alpine base'ning potentsial muammosi?"
+        options: ["Katta", "musl libc — ba'zi wheel'lar mos emas, kompilyatsiya kerak bo'ladi", "Xavfli", "Pullik"]
+        answer: 1
+        why: "Ba'zan slim aslida kichikroq va tezroq natija beradi."
+    hardcore:
+      - "Ilovani distroless (`gcr.io/distroless/python3-debian12`) yoki chainguard image'ga ko'chiring; ishlashini, hajmini va trivy natijasini solishtiring."
+
+  - key: docker-06-lab
+    kind: lab
+    title: "LAB: buzilgan Dockerfile"
+    theory: |
+      Odatiy Dockerfile xatolari: cache'ni buzadigan tartib, `apt-get update` alohida layerda (eskirgan ro'yxat), shell form CMD, root user, sirlar ARG/ENV'da (image tarixida ko'rinadi!), `latest` base, keraksiz fayllar.
+      `docker history --no-trunc` va `docker inspect` image ichidagi sirlarni ochib beradi — shuning uchun sir hech qachon build vaqtida berilmaydi.
+    task: |
+      Quyidagini `Dockerfile.broken` qilib saqlang va 7 ta xatoni toping va tuzating:
+          FROM python:latest
+          ARG DB_PASSWORD=secret123
+          COPY . /app
+          RUN apt-get update
+          RUN apt-get install -y gcc
+          RUN pip install -r /app/requirements.txt
+          ENV API_KEY=abc
+          CMD python /app/main.py
+      1) `docker history --no-trunc` bilan sirlarni toping.
+      2) Har tuzatishni izohlang.
+      3) Hajm va build vaqtini oldin/keyin solishtiring.
+    done: "7 ta muammo topildi, tuzatilgan image'da sir yo'q."
+    resources:
+      - {title: "Docker docs — Build best practices", url: "https://docs.docker.com/build/building/best-practices/"}
+      - {title: "hadolint — Dockerfile linter", url: "https://github.com/hadolint/hadolint"}
+    quiz:
+      - q: "ARG bilan berilgan parol image'dan ko'rinadimi?"
+        options: ["Yo'q", "Ha — docker history'da ko'rinishi mumkin", "Faqat root ko'radi", "Shifrlanadi"]
+        answer: 1
+        why: "Build sirlari uchun BuildKit `--secret` ishlating."
+      - q: "`RUN apt-get update` ni alohida layerda yozishning muammosi?"
+        options: ["Yo'q", "Cache tufayli eskirgan paket ro'yxati keyingi install'da ishlatilishi mumkin", "Tezroq", "Xavfsiz"]
+        answer: 1
+        why: "update && install birga bo'lishi kerak."
+    hardcore:
+      - "hadolint'ni pre-commit'ga qo'shing va repo'laringizdagi barcha Dockerfile'larni ogohlantirishsiz holatga keltiring."
+
+  - key: docker-07-network
+    title: "Docker networking"
+    theory: |
+      Driverlar: bridge (default, docker0), user-defined bridge (konteynerlar bir-birini NOM bilan topadi — embedded DNS 127.0.0.11), host (host tarmog'ini to'g'ridan-to'g'ri ishlatadi), none, overlay (ko'p host). Default bridge'da nom bo'yicha topish yo'q!
+      Har user-defined network — alohida subnet va izolyatsiya; konteyner bir nechta networkga ulanishi mumkin. `docker network create/ls/inspect/connect`. Port publish faqat tashqaridan kirish uchun kerak — konteynerlararo aloqa ichki port orqali.
+    task: |
+      1) `appnet` yarating, postgres va adminer'ni ulang, adminer'dan `postgres` hostname bilan kiring.
+      2) Xuddi shuni default bridge'da sinab, nom bilan ulanmasligini ko'ring.
+      3) `docker network inspect appnet` — subnet, gateway, konteyner IP'lari.
+      4) Konteyner ichidan `cat /etc/resolv.conf` — 127.0.0.11 ni toping.
+    done: "Konteynerlar portni publish qilmasdan nom bilan gaplashadi."
+    resources:
+      - {title: "Docker docs — Networking overview", url: "https://docs.docker.com/engine/network/"}
+    quiz:
+      - q: "Konteynerlar bir-birini nom bilan topishi uchun?"
+        options: ["host network", "User-defined bridge network", "--link majburiy", "Port publish"]
+        answer: 1
+        why: "Embedded DNS faqat user-defined networklarda."
+      - q: "DB konteyneriga ilova konteyneridan ulanish uchun port publish (-p) kerakmi?"
+        options: ["Ha", "Yo'q — bir networkda ichki port orqali ulanadi", "Faqat TLS bilan", "Faqat host network'da"]
+        answer: 1
+        why: "-p faqat host/tashqaridan kirish uchun."
+    hardcore:
+      - "Ikki tarmoqli dizayn: `frontend` (nginx + app) va `backend` (app + db, `--internal`). nginx'dan db'ga ulanib bo'lmasligini va db internetga chiqa olmasligini isbotlang."
+
+  - key: docker-08-volumes
+    title: "Volumes, bind mounts va tmpfs"
+    theory: |
+      Named volume (`-v pgdata:/var/lib/postgresql/data`) — Docker boshqaradi, DB va doimiy ma'lumotlar uchun. Bind mount (`-v $PWD/src:/app`) — host papkasi, dev va konfiglar uchun (`:ro` faqat o'qish). tmpfs — xotirada, vaqtinchalik.
+      Volume'lar konteyner o'chirilganda qoladi (`docker volume ls`), `docker compose down -v` esa o'chiradi — ehtiyot bo'ling! Backup: vaqtinchalik konteyner bilan `tar`.
+    task: |
+      1) Postgres'ni named volume bilan ishga tushirib, ma'lumot qo'shing.
+      2) Konteynerni o'chirib qayta yarating — ma'lumot joyida.
+      3) Volume backup: `docker run --rm -v pgdata:/data -v $PWD:/b alpine tar czf /b/pgdata.tgz -C /data .`; volume'ni o'chirib tiklang.
+      4) Bind mount bilan nginx konfigini `:ro` ulang.
+    done: "Volume backup'dan tiklash ishladi."
+    resources:
+      - {title: "Docker docs — Volumes", url: "https://docs.docker.com/engine/storage/volumes/"}
+    quiz:
+      - q: "DB ma'lumotlari uchun eng mos saqlash turi?"
+        options: ["Konteyner yozish qatlami", "Named volume", "tmpfs", "Image ichida"]
+        answer: 1
+        why: "Konteyner hayot siklidan mustaqil."
+      - q: "`:ro` bind mount'da nima qiladi?"
+        options: ["Tezlashtiradi", "Konteyner faylni faqat o'qiy oladi", "Shifrlaydi", "O'chiradi"]
+        answer: 1
+        why: "Konfiglarni tasodifiy o'zgarishdan himoya."
+    hardcore:
+      - "Ishlayotgan Postgres volume'ini fayl darajasida tar qilish nima uchun xavfli ekanini isbotlang va to'g'ri usul (pg_dump yoki to'xtatib olish) bilan solishtiring."
+
+  - key: docker-09-internals
+    title: "Ichki tuzilma: namespaces, cgroups, overlayfs"
+    theory: |
+      Konteyner = oddiy Linux jarayoni + namespaces (pid, net, mnt, uts, ipc, user — "nima ko'rinadi") + cgroups (CPU, RAM, I/O limitlari — "qancha ishlatish mumkin") + overlayfs (image layerlari ustiga yozish qatlami).
+      Host'dan konteyner jarayonini `ps` da ko'rasiz! `nsenter -t PID -n -p` — namespace ichiga kirish. Bu bilim Kubernetes, xavfsizlik va debug'da kerak.
+    task: |
+      1) `docker run -d --name t --memory=100m --cpus=0.5 nginx`; host'da `ps aux | grep nginx` — jarayonni toping.
+      2) `/sys/fs/cgroup` ichidan memory limitini toping (`docker inspect` dagi PID orqali).
+      3) `nsenter -t PID -n ip a` — konteyner tarmog'ini host'dan ko'ring.
+      4) `docker inspect t | jq '.[0].GraphDriver'` — overlay layerlari.
+      5) `unshare --pid --fork --mount-proc bash` — qo'lda "konteyner", `ps aux`.
+    done: "Konteyner host'da oddiy jarayon ekanini isbotladingiz."
+    resources:
+      - {title: "iximiuz — Learning Containers From The Bottom Up", url: "https://iximiuz.com/en/posts/container-learning-path/"}
+    quiz:
+      - q: "Konteyner RAM limitini qaysi mexanizm ta'minlaydi?"
+        options: ["namespaces", "cgroups", "overlayfs", "seccomp"]
+        answer: 1
+        why: "cgroups — resurslar; namespaces — ko'rinish."
+      - q: "Host'dan konteyner jarayonini `ps` da ko'rish mumkinmi?"
+        options: ["Yo'q", "Ha — u host'dagi oddiy jarayon", "Faqat root", "Faqat VM'da"]
+        answer: 1
+        why: "PID namespace faqat konteyner ichidan ko'rinishni cheklaydi."
+    hardcore:
+      - "Python'da 50 qatorgacha 'mini-docker': `unshare` + `chroot` (alpine minirootfs) + cgroup memory limit bilan buyruqni izolyatsiyada ishga tushirsin."
+
+  - key: docker-10-limits
+    title: "Resurs limitlari, healthcheck va restart"
+    theory: |
+      Limitlarsiz konteyner butun serverni egallashi mumkin: `--memory=256m`, `--cpus=0.5`, `--pids-limit`. RAM oshsa OOMKilled (exit 137). Restart policy: `no`, `on-failure[:N]`, `unless-stopped`, `always`.
+      HEALTHCHECK: `HEALTHCHECK --interval=30s --timeout=3s CMD curl -f http://localhost:8000/health || exit 1` — holat `docker ps` da healthy/unhealthy. Healthcheck faqat holatni ko'rsatadi; Docker o'zi unhealthy'ni restart qilmaydi (Compose/Swarm/K8s qiladi).
+    task: |
+      1) Ilovaga HEALTHCHECK qo'shing, `docker ps` va `docker inspect --format '{{.State.Health.Status}}'`.
+      2) `--memory=50m` bilan xotirani ko'p ishlatuvchi skriptni ishga tushirib OOMKilled ni ko'ring (`docker inspect` → OOMKilled: true).
+      3) `--restart=on-failure:3` bilan ataylab yiqiladigan konteyner — restart sonini kuzating.
+      4) `docker stats` — real vaqtda resurslar.
+    done: "OOMKilled va restart policy'ni amalda ko'rdingiz."
+    resources:
+      - {title: "Docker docs — Resource constraints", url: "https://docs.docker.com/engine/containers/resource_constraints/"}
+    quiz:
+      - q: "Exit code 137 odatda nimani bildiradi?"
+        options: ["Muvaffaqiyat", "SIGKILL — ko'pincha OOM", "Sintaksis xato", "Port band"]
+        answer: 1
+        why: "128 + 9 (KILL)."
+      - q: "`unless-stopped` va `always` farqi?"
+        options: ["Farqi yo'q", "unless-stopped qo'lda to'xtatilgan konteynerni daemon restartida ko'tarmaydi", "always ishlamaydi", "unless-stopped faqat xatoda"]
+        answer: 1
+        why: "Qo'lda to'xtatganingiz hurmat qilinadi."
+    hardcore:
+      - "Healthcheck unhealthy bo'lganda konteynerni restart qiladigan kichik 'autoheal' skript/konteyner yozing (Docker events API orqali)."
+
+  - key: docker-11-logs
+    title: "Loglar: logging driverlar va rotatsiya"
+    theory: |
+      Ilova stdout/stderr'ga yozadi, Docker logging driver ularni saqlaydi: json-file (default, `/var/lib/docker/containers/.../*-json.log`), local, journald, syslog, fluentd. Default json-file'da rotatsiya yo'q — disk to'lishining klassik sababi!
+      `/etc/docker/daemon.json`: `{"log-driver":"json-file","log-opts":{"max-size":"10m","max-file":"3"}}` — barcha yangi konteynerlarga. `docker logs --since 10m --tail 100 -f`.
+    task: |
+      1) Ko'p log yozadigan konteyner ishga tushirib, json log fayl hajmini kuzating.
+      2) daemon.json'da global rotatsiya sozlang, Docker restart, yangi konteynerda tekshiring.
+      3) journald driver bilan konteyner ishga tushirib, `journalctl CONTAINER_NAME=...` bilan o'qing.
+      4) `docker logs --since`, `--until` filtrlarini sinang.
+    done: "Konteyner loglari diskni to'ldirmaydi."
+    resources:
+      - {title: "Docker docs — Configure logging drivers", url: "https://docs.docker.com/engine/logging/configure/"}
+    quiz:
+      - q: "Default json-file driver'ning xavfi?"
+        options: ["Sekin", "Rotatsiya sozlanmasa log fayllar diskni to'ldiradi", "Shifrlanmagan", "Yo'qoladi"]
+        answer: 1
+        why: "max-size va max-file qo'ying."
+      - q: "daemon.json'dagi log sozlamasi mavjud konteynerlarga qo'llanadimi?"
+        options: ["Ha, darhol", "Yo'q — faqat yangi yaratilganlarga", "Restartdan keyin", "Faqat root'ga"]
+        answer: 1
+        why: "Mavjudlarini qayta yaratish kerak."
+    hardcore:
+      - "Loki driver yoki Promtail bilan konteyner loglarini markaziy joyga yig'ishni sinab ko'ring (monitoring moduliga oldindan qarash)."
+
+  - key: docker-12-lab
+    kind: lab
+    title: "LAB: konteyner o'lib qolyapti"
+    theory: |
+      Konteyner muammolarini topish tartibi: `docker ps -a` (holat va exit code) → `docker logs` (oxirgi xabarlar) → `docker inspect` (State: ExitCode, OOMKilled, Error, Health) → `docker events` → `docker run -it --entrypoint sh image` (qo'lda ichkaridan tekshirish).
+      Exit kodlar: 0 normal, 1 ilova xatosi, 125 docker xatosi, 126 ishga tushirib bo'lmaydi (ruxsat), 127 buyruq topilmadi, 137 KILL/OOM, 143 TERM.
+    task: |
+      Har holatni yarating va faqat Docker vositalari bilan sababini toping:
+      1) CMD'da noto'g'ri buyruq nomi (127).
+      2) Skript fayli executable emas (126).
+      3) Kerakli env yo'q bo'lsa ilova yiqiladi (1).
+      4) Xotira limiti juda kichik (137, OOMKilled).
+      5) Har biri uchun "exit code → buyruq → sabab" jadvali.
+    done: "4 ta holat 10 daqiqa ichida aniqlandi."
+    resources:
+      - {title: "Docker docs — docker inspect", url: "https://docs.docker.com/reference/cli/docker/inspect/"}
+    quiz:
+      - q: "Exit code 127?"
+        options: ["OOM", "Buyruq topilmadi", "Ruxsat yo'q", "Normal"]
+        answer: 1
+        why: "Shell standarti — command not found."
+      - q: "Konteyner darhol o'chib qolsa ichini tekshirish usuli?"
+        options: ["docker exec", "docker run -it --entrypoint sh image", "docker logs -f", "Imkonsiz"]
+        answer: 1
+        why: "exec faqat ishlayotgan konteynerga."
+    hardcore:
+      - "Konteyner o'lganda (`die` event, exit != 0) uning oxirgi 30 qator logini Telegram'ga yuboradigan watcher skript yozing."
+
+  - key: docker-13-security
+    title: "Konteyner xavfsizligi"
+    theory: |
+      Asosiy qoidalar: non-root USER; `--read-only` + kerakli joyga tmpfs; `--cap-drop=ALL` (+ faqat kerakli `--cap-add`); `--security-opt=no-new-privileges`; `--privileged` hech qachon (deyarli); Docker socket'ni konteynerga mount qilmang (bu host root'i); minimal base.
+      Sirlar: image'ga emas, runtime'da (env, fayl, Docker secrets). Default seccomp va AppArmor profillari ham himoya beradi.
+    task: |
+      1) Ilova image'ida `USER app` borligini va `docker run --rm app id` root emasligini tekshiring.
+      2) `--read-only --tmpfs /tmp --cap-drop=ALL --security-opt no-new-privileges` bilan ishga tushiring — ishlaydimi? Nima buzildi?
+      3) `docker run -v /:/host -it alpine` bilan host fayllarini o'qing — nima uchun docker guruhi = root ekanini isbotlang.
+      4) Docker Bench for Security'ni ishga tushirib top-5 ogohlantirishni o'qing.
+    done: "Ilova eng qattiq cheklovlar bilan ishlaydi."
+    resources:
+      - {title: "OWASP — Docker Security Cheat Sheet", url: "https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html"}
+      - {title: "Docker Bench for Security", url: "https://github.com/docker/docker-bench-security"}
+    quiz:
+      - q: "`-v /var/run/docker.sock:/var/run/docker.sock` ning xavfi?"
+        options: ["Yo'q", "Konteyner host'da istalgan konteyner (shu jumladan root huquqli) yarata oladi", "Sekinlashadi", "Loglar yo'qoladi"]
+        answer: 1
+        why: "Socket = Docker daemon ustidan to'liq nazorat."
+      - q: "`--cap-drop=ALL` nima qiladi?"
+        options: ["Tarmoqni o'chiradi", "Root'ning barcha maxsus kernel huquqlarini olib tashlaydi", "Diskni yopadi", "Loglarni o'chiradi"]
+        answer: 1
+        why: "Keyin faqat kerakli capability qo'shiladi."
+    hardcore:
+      - "user namespace remapping (`userns-remap`) ni Docker daemon'da yoqib, konteyner ichidagi root host'da oddiy UID ekanini isbotlang."
+
+  - key: docker-14-scan
+    title: "Image skanerlash: Trivy"
+    theory: |
+      Image'dagi OS paketlar va kutubxonalarda ma'lum zaifliklar (CVE) bo'lishi mumkin. Trivy: `trivy image app:0.1` — zaifliklar darajasi bo'yicha (CRITICAL, HIGH...), `--severity CRITICAL,HIGH`, `--ignore-unfixed`, `--exit-code 1` (CI'da to'xtatish). Shuningdek Dockerfile/IaC misconfiguration'larini ham tekshiradi (`trivy config`).
+      Kamaytirish: yangiroq va kichikroq base, keraksiz paketlarsiz, muntazam rebuild.
+    task: |
+      1) Trivy o'rnating, naive va slim image'laringizni skanerlang — CRITICAL/HIGH soni.
+      2) Base'ni yangilab yoki distroless'ga o'tib sonini kamaytiring.
+      3) `trivy config .` bilan Dockerfile'ni tekshiring.
+      4) Natijani jadval qiling: image → hajm → CRITICAL → HIGH.
+    done: "Production image'da CRITICAL = 0."
+    resources:
+      - {title: "Trivy docs", url: "https://trivy.dev/latest/"}
+    quiz:
+      - q: "Trivy'ni CI'da pipeline'ni to'xtatadigan qilish?"
+        options: ["--quiet", "--exit-code 1 --severity CRITICAL", "--format json", "--ignore"]
+        answer: 1
+        why: "Topilsa nol bo'lmagan kod qaytaradi."
+      - q: "`--ignore-unfixed` ma'nosi?"
+        options: ["Hammasini o'tkazadi", "Hali tuzatish chiqmagan zaifliklarni ko'rsatmaydi", "Xatolarni yashiradi", "Tezlashtiradi"]
+        answer: 1
+        why: "Hozir harakat qilib bo'lmaydiganlarni filtrlaydi."
+    hardcore:
+      - "Bitta CRITICAL CVE'ni tanlab, u ilovangizga haqiqatan ta'sir qiladimi (zaif funksiya ishlatilyaptimi) tahlil qiling va `.trivyignore` ga asos bilan qo'shing."
+
+  - key: docker-15-registry
+    title: "Registry: GHCR, tag strategiyasi va digest"
+    theory: |
+      Registry — image ombori: Docker Hub (rate limit bor), GHCR (ghcr.io, GitHub bilan), GitLab Registry, AWS ECR, self-hosted `registry:2`. `docker tag app ghcr.io/user/app:0.1.0`, `docker login ghcr.io` (PAT bilan), `docker push`.
+      Tag strategiyasi: semver (`1.2.0`) va git SHA (`sha-abc1234`) — qaysi kod ishlayotgani aniq, rollback oson. Tag o'zgaruvchan, digest (`@sha256:...`) — o'zgarmas; maksimal ishonch uchun digest bilan deploy qiling.
+    task: |
+      1) GitHub PAT (write:packages) bilan `docker login ghcr.io`.
+      2) Image'ni `0.1.0` va `sha-<git short sha>` taglari bilan push qiling.
+      3) VPS'da `docker pull` qiling (private bo'lsa login kerak).
+      4) `docker inspect --format '{{index .RepoDigests 0}}'` — digest'ni oling va u bilan run qiling.
+    done: "Image GHCR'da, digest bilan ishga tushirdingiz."
+    resources:
+      - {title: "GitHub — Working with the Container registry", url: "https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry"}
+    quiz:
+      - q: "Tag va digest farqi?"
+        options: ["Farqi yo'q", "Tag boshqa image'ga ko'chirilishi mumkin; digest mazmunning o'zgarmas xeshi", "Digest qisqaroq", "Tag xavfsizroq"]
+        answer: 1
+        why: "Bir xil tag ertaga boshqa image bo'lishi mumkin."
+      - q: "Production deploy uchun yaxshi tag?"
+        options: ["latest", "Git SHA yoki semver", "dev", "test"]
+        answer: 1
+        why: "Kuzatiluvchanlik va rollback."
+    hardcore:
+      - "VPS'da TLS va basic auth bilan o'z private registry'ingizni (`registry:2` + nginx) ko'taring, push/pull qiling va garbage collection'ni ishga tushiring."
+
+  - key: docker-16-buildkit
+    title: "BuildKit: secrets, cache mounts, multi-arch"
+    theory: |
+      BuildKit — zamonaviy build dvigateli: parallel stage'lar, `RUN --mount=type=secret,id=npmrc` (sir image'ga tushmaydi), `RUN --mount=type=cache` (pip/apt cache build'lar orasida), `--mount=type=ssh` (private repo clone).
+      `docker buildx` — multi-platform build: `--platform linux/amd64,linux/arm64` (QEMU emulyatsiya), natija manifest list. ARM serverlar (AWS Graviton) arzonroq — multi-arch image'lar tobora ko'p kerak.
+    task: |
+      1) Private paket (yoki soxta token) ni `--secret` bilan build'da ishlating; `docker history` da yo'qligini tekshiring.
+      2) pip cache mount bilan rebuild vaqtini o'lchang.
+      3) `docker buildx create --use`, amd64+arm64 image yasab GHCR'ga push qiling.
+      4) `docker buildx imagetools inspect` bilan manifest list'ni ko'ring.
+    done: "Multi-arch image GHCR'da, sir image tarixida yo'q."
+    resources:
+      - {title: "Docker docs — Build secrets", url: "https://docs.docker.com/build/building/secrets/"}
+      - {title: "Docker docs — Multi-platform builds", url: "https://docs.docker.com/build/building/multi-platform/"}
+    quiz:
+      - q: "Build vaqtida sirni xavfsiz berish usuli?"
+        options: ["ARG", "ENV", "RUN --mount=type=secret", "COPY .env"]
+        answer: 2
+        why: "Sir faqat shu RUN davomida mavjud, layerga yozilmaydi."
+      - q: "Multi-arch image nima uchun kerak?"
+        options: ["Kerak emas", "Bir xil tag amd64 va arm64 serverlarda ishlashi uchun", "Hajm uchun", "Xavfsizlik"]
+        answer: 1
+        why: "Docker platformaga mos variantni avtomatik tortadi."
+    hardcore:
+      - "`docker bake` (docker-bake.hcl) bilan bot va FastAPI image'larini bitta buyruqda, umumiy taglar va cache bilan quring."
+
+  - key: docker-17-debug
+    title: "Debug vositalari: inspect, stats, dive, nsenter"
+    theory: |
+      Asboblar to'plami: `docker inspect` (hamma sozlama, jq bilan), `docker stats` (resurslar), `docker top` (konteyner jarayonlari), `docker diff` (yozish qatlamidagi o'zgarishlar), `docker cp` (fayl olish/qo'yish), `dive` (layer tahlili), `nsenter` va `docker debug` / netshoot konteyneri (`docker run --rm -it --network container:app nicolaka/netshoot`) — shell'siz konteynerlarni tarmoq jihatidan tekshirish.
+    task: |
+      1) distroless (shell yo'q) konteynerni netshoot bilan tarmoq jihatidan tekshiring (`--network container:...`).
+      2) `docker diff` bilan ilova ishlash paytida qaysi fayllarni yozayotganini toping.
+      3) `docker cp` bilan konteynerdan log/konfig oling.
+      4) O'zingiz uchun "docker debug cheatsheet" yozing (10 buyruq).
+    done: "Shell'siz konteynerni ham debug qila olasiz."
+    resources:
+      - {title: "nicolaka/netshoot", url: "https://github.com/nicolaka/netshoot"}
+    quiz:
+      - q: "Shell'i yo'q konteyner tarmog'ini tekshirish usuli?"
+        options: ["Imkonsiz", "netshoot konteynerini `--network container:<nom>` bilan ishga tushirish", "docker exec sh", "Rebuild"]
+        answer: 1
+        why: "Bir xil network namespace'ni bo'lishadi."
+      - q: "`docker diff` nimani ko'rsatadi?"
+        options: ["Ikki image farqi", "Konteyner yozish qatlamida qo'shilgan/o'zgargan/o'chirilgan fayllar", "Git diff", "Log farqi"]
+        answer: 1
+        why: "A/C/D belgilari."
+    hardcore:
+      - "Ishlayotgan Python konteynerida `py-spy dump` (netshoot yoki --pid namespace bilan) orqali qaysi funksiya CPU yeyayotganini toping."
+
+  - key: docker-18-project
+    kind: project
+    title: "LOYIHA: Production-ready image'lar"
+    theory: |
+      Modul yakuni: ikkala loyihangiz (FastAPI ilova va DevOps Quest bot) uchun namunali image'lar — kichik, xavfsiz, tez build bo'ladigan, skanerlangan va registry'da. Keyingi modulda ularni Compose bilan, keyin CI/CD bilan ishlatasiz.
+    task: |
+      1) Ikkala ilova: multi-stage, slim/distroless, non-root, HEALTHCHECK, exec form, .dockerignore, cache mount.
+      2) hadolint va trivy toza (CRITICAL = 0).
+      3) GHCR'ga semver + sha taglari, multi-arch (ixtiyoriy).
+      4) README'da jadval: oldin/keyin hajm, build vaqti, CVE soni.
+      5) Read-only, cap-drop bilan ishga tushirish buyrug'i hujjatda.
+    done: "Ikkala image GHCR'da, hadolint/trivy toza, jadval README'da."
+    resources:
+      - {title: "milanm — Learn Containers", url: "https://github.com/milanm/DevOps-Roadmap#6-learn-containers"}
+      - {title: "GfG — Docker Tutorial", url: "https://www.geeksforgeeks.org/devops/docker-tutorial/"}
+    quiz:
+      - q: "Production image'ning eng muhim 3 xususiyati?"
+        options: ["Katta, root, latest", "Kichik, non-root, aniq versiyali", "Ko'p paketli, shell'li, tez", "Faqat kichik"]
+        answer: 1
+        why: "Hujum yuzasi kichik, kuzatiluvchan."
+    hardcore:
+      - "Image'larni cosign bilan imzolab (key-pair), `cosign verify` bilan tekshiring — supply chain xavfsizligiga birinchi qadam."

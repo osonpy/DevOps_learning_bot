@@ -1,0 +1,466 @@
+# J1 · Tarmoq · 6–8-hafta (18 dars)
+lessons:
+  - key: net-01-models
+    title: "Tarmoq modellari: OSI va TCP/IP"
+    theory: |
+      OSI 7 qatlam (Physical, Data Link, Network, Transport, Session, Presentation, Application) — nazariy model; amalda TCP/IP 4 qatlam: Link (Ethernet, MAC) → Internet (IP) → Transport (TCP/UDP, port) → Application (HTTP, DNS, SSH).
+      Encapsulation: HTTP so'rov TCP segmentga, u IP paketga, u Ethernet freymga o'raladi. DevOps uchun eng muhim savol: muammo qaysi qatlamda? "Ping ishlaydi, sayt ochilmaydi" — L3 joyida, L4/L7 ni tekshir.
+    task: |
+      1) Qatlamlar jadvalini jurnalga qo'lda chizing: har qatlamga protokol va tekshirish buyrug'i (ip link, ping, nc, curl).
+      2) `ip link`, `ip -br a` — interfeyslar, MAC va IP.
+      3) `curl -v http://example.com` chiqishida qaysi qator qaysi qatlamga tegishli — belgilang.
+      4) "Sayt ochilmayapti" holati uchun qatlamma-qatlam tekshirish ro'yxatini yozing.
+    done: "Har qatlam uchun bitta tekshirish buyrug'ini ayta olasiz."
+    resources:
+      - {title: "Cloudflare — What is the OSI model?", url: "https://www.cloudflare.com/learning/ddos/glossary/open-systems-interconnection-model-osi/"}
+      - {title: "GfG — TCP/IP Model", url: "https://www.geeksforgeeks.org/computer-networks/tcp-ip-model/"}
+    quiz:
+      - q: "Port raqamlari qaysi qatlamga tegishli?"
+        options: ["Network (L3)", "Transport (L4)", "Application (L7)", "Link (L2)"]
+        answer: 1
+        why: "TCP/UDP portlar — transport qatlami."
+      - q: "Ping ishlaydi, lekin `curl` timeout. Muammo ehtimoli qayerda?"
+        options: ["Kabel", "L4 yoki L7: port yopiq, firewall yoki ilova ishlamayapti", "MAC manzil", "DNS hech qachon"]
+        answer: 1
+        why: "ICMP o'tadi — IP routing joyida."
+    hardcore:
+      - "`tcpdump -i any -nn -X port 80` bilan bitta HTTP so'rovni ushlab, IP sarlavha, TCP portlar va HTTP matnini chiqishda belgilab ko'rsating."
+
+  - key: net-02-ip
+    title: "IP manzillar, subnet va CIDR"
+    theory: |
+      IPv4 — 32 bit, 4 oktet. CIDR `/24` — birinchi 24 bit tarmoq, qolgani hostlar: 2^8 = 256 manzil, 254 host (network va broadcast chiqadi). `/16` = 65 536, `/28` = 16 manzil.
+      Private diapazonlar: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 — Docker (172.17.0.0/16), AWS VPC, K8s pod tarmoqlari aynan shular. NAT private manzillarni bitta public IP orqali internetga chiqaradi. 127.0.0.1 — loopback, 0.0.0.0 — "barcha interfeyslar".
+    task: |
+      1) Qo'lda hisoblang: 10.20.0.0/22 — network, broadcast, host soni, birinchi/oxirgi host.
+      2) `ipcalc 10.20.0.0/22` bilan tekshiring.
+      3) VPS'ingiz public va private IP'larini aniqlang (`ip a`, `curl ifconfig.me`).
+      4) AWS VPC uchun 10.0.0.0/16 ni 4 ta /24 subnetga bo'lish rejasini yozing (2 public, 2 private).
+    done: "/22 ni ipcalc'siz to'g'ri hisoblaysiz."
+    resources:
+      - {title: "Subnet calculator (jodies)", url: "https://jodies.de/ipcalc"}
+      - {title: "Cloudflare — What is a subnet?", url: "https://www.cloudflare.com/learning/network-layer/what-is-a-subnet/"}
+    quiz:
+      - q: "/26 subnetda nechta foydalanish mumkin bo'lgan host bor?"
+        options: ["64", "62", "30", "126"]
+        answer: 1
+        why: "2^(32-26)=64, minus network va broadcast = 62."
+      - q: "Servis `0.0.0.0:8000` da tinglayapti. Bu nimani bildiradi?"
+        options: ["Hech qayerdan ulanib bo'lmaydi", "Barcha interfeyslarda (tashqaridan ham) ochiq", "Faqat localhost", "Xato"]
+        answer: 1
+        why: "Faqat lokal uchun 127.0.0.1 ga bind qiling."
+    hardcore:
+      - "Python'da (`ipaddress` moduli) CLI yozing: CIDR berilsa, uni N ta teng subnetga bo'lib, har birining diapazonini chiqarsin."
+
+  - key: net-03-routing
+    title: "Interfeyslar, routing va gateway"
+    theory: |
+      Har paket uchun kernel routing jadvaliga qaraydi: `ip route` — `default via 10.0.0.1` (default gateway — boshqa barcha manzillar shu yerga), lokal tarmoqlar bevosita. `ip route get 8.8.8.8` — aniq manzil qaysi yo'ldan ketishini ko'rsatadi.
+      Yo'lni kuzatish: `traceroute`/`mtr` (har hop va kechikish). Muammo bosqichlari: interfeys UP'mi → IP bormi → gateway'ga ping → tashqi IP'ga ping → DNS.
+    task: |
+      1) `ip route` va `ip route get 1.1.1.1` ni o'qib, gateway'ni aniqlang.
+      2) `mtr -rwc 10 google.com` — qaysi hop'da kechikish oshishini toping.
+      3) `ip neigh` — ARP jadvali (L2) nima ekanini jurnalga.
+      4) Tarmoq troubleshooting checklist'ingizga routing qadamlarini qo'shing.
+    done: "Paket serveringizdan internetga qaysi yo'l bilan chiqishini tushuntira olasiz."
+    resources:
+      - {title: "Red Hat — ip command cheat sheet", url: "https://www.redhat.com/en/blog/ip-command-cheat-sheet"}
+    quiz:
+      - q: "Default gateway nima?"
+        options: ["DNS server", "Routing jadvalida aniq yo'l topilmagan barcha paketlar yuboriladigan router", "Firewall", "DHCP server"]
+        answer: 1
+        why: "Odatda internetga chiqish nuqtasi."
+      - q: "Paketning yo'lidagi har bir router'ni ko'rsatadigan vosita?"
+        options: ["ping", "traceroute/mtr", "dig", "ss"]
+        answer: 1
+        why: "TTL'ni oshirib boradi va har hop'dan javob oladi."
+    hardcore:
+      - "Ikkita network namespace va oraliq 'router' namespace yarating, statik route'lar qo'shib, birinchidan uchinchisiga ping o'tkazing."
+
+  - key: net-04-tcp-udp
+    title: "TCP, UDP va portlar"
+    theory: |
+      TCP — ishonchli, tartibli, ulanish o'rnatiladi (3-way handshake: SYN → SYN-ACK → ACK); HTTP, SSH, Postgres. UDP — ulanishsiz, tez; DNS, video, WireGuard. Port 0–65535; 0–1023 privilegiyali (root kerak).
+      Holatlar: LISTEN, ESTABLISHED, TIME_WAIT. `ss -tulpn` — qaysi port ochiq va qaysi jarayon tinglayapti (eng ko'p ishlatiladigan buyruq!). `nc -zv host 5432` — port ochiqligini tekshirish. Mashhur portlar: 22, 53, 80, 443, 5432, 6379.
+    task: |
+      1) `ss -tulpn` natijasini jadval qilib yozing: port, protokol, jarayon, bind manzil.
+      2) `nc -l 9000` (server) va `nc localhost 9000` (client) bilan oddiy chat.
+      3) `ss -tan state established` — hozirgi ulanishlar.
+      4) VPS'ingizda tashqariga keraksiz ochiq port bormi — aniqlang.
+    done: "Har ochiq port uchun 'nega ochiq va kimga kerak' javobi bor."
+    resources:
+      - {title: "GfG — Differences between TCP and UDP", url: "https://www.geeksforgeeks.org/computer-networks/differences-between-tcp-and-udp/"}
+    quiz:
+      - q: "Qaysi buyruq tinglayotgan portlar va jarayonlarni ko'rsatadi?"
+        options: ["ping", "ss -tulpn", "dig", "ip route"]
+        answer: 1
+        why: "t tcp, u udp, l listen, p process, n raqamli."
+      - q: "DNS so'rovlari odatda qaysi protokolda?"
+        options: ["TCP 80", "UDP 53", "TCP 22", "UDP 443"]
+        answer: 1
+        why: "Katta javoblar va zone transfer uchun TCP 53 ham ishlatiladi."
+    hardcore:
+      - "Python'da oddiy TCP port scanner (asyncio bilan, 1–1024 portlar, 1 soniyadan kam) yozing va faqat o'z serveringizda sinang."
+
+  - key: net-05-dns
+    title: "DNS: qanday ishlaydi va dig"
+    theory: |
+      DNS — nom → IP. Yo'l: resolver (masalan 1.1.1.1) → root → TLD (.uz, .com) → authoritative server. Yozuvlar: A (IPv4), AAAA (IPv6), CNAME (taxallus), MX (pochta), TXT (tasdiqlash, SPF), NS. TTL — kesh muddati.
+      `dig example.com`, `dig +short`, `dig @8.8.8.8 example.com` (aniq server orqali), `dig +trace` (butun yo'l), `dig MX`. "DNS'ni o'zgartirdim, ishlamayapti" — ko'pincha TTL hali tugamagan.
+    task: |
+      1) `dig +trace github.com` — har bosqichni jurnalga.
+      2) O'z domeningiz (yoki istalgan) uchun A, MX, TXT, NS yozuvlarini oling.
+      3) Ikki resolver (1.1.1.1 va 8.8.8.8) natijasi va TTL'ini solishtiring.
+      4) CNAME zanjiriga misol toping (masalan www.<sayt>).
+    done: "dig +trace yo'lini o'z so'zingiz bilan tushuntira olasiz."
+    resources:
+      - {title: "How DNS Works (komiks)", url: "https://howdns.works/"}
+      - {title: "GfG — Domain Name System", url: "https://www.geeksforgeeks.org/computer-networks/domain-name-system-dns-in-application-layer/"}
+    quiz:
+      - q: "Domenni boshqa serverga ko'chirishdan oldin nima qilinadi?"
+        options: ["MX o'chiriladi", "TTL oldindan kamaytiriladi", "NS o'zgartiriladi", "Hech narsa"]
+        answer: 1
+        why: "Past TTL — eski IP keshlarda tez yangilanadi."
+      - q: "CNAME yozuvi nima?"
+        options: ["IPv6 manzil", "Bir nomni boshqa nomga yo'naltiruvchi taxallus", "Pochta serveri", "Matn yozuv"]
+        answer: 1
+        why: "Masalan www → app.example.com."
+    hardcore:
+      - "Python'da (dnspython siz, socket bilan) A yozuvini so'rovchi minimal DNS client yozing: UDP paketni qo'lda yasab, javobdan IP'ni ajrating."
+
+  - key: net-06-dns-lab
+    kind: lab
+    title: "LAB: DNS buzildi"
+    theory: |
+      Linux'da nom aniqlash tartibi /etc/nsswitch.conf da: odatda avval /etc/hosts, keyin DNS. Resolver sozlamasi /etc/resolv.conf (Ubuntu'da systemd-resolved: `resolvectl status`). `getent hosts nom` — tizim ishlatadigan yo'l bilan tekshiradi (dig esa /etc/hosts'ni ko'rmaydi!).
+      Klassik incident'lar: noto'g'ri /etc/hosts yozuvi, ishlamaydigan nameserver, konteyner ichida boshqa resolv.conf.
+    task: |
+      Lab (zaxira oling: `sudo cp /etc/hosts /etc/hosts.bak`):
+      1) /etc/hosts ga `10.255.255.1 github.com` qo'shing. `curl https://github.com` va `dig github.com` natijalari nega har xil?
+      2) `getent hosts github.com` bilan sababni isbotlang, tuzating.
+      3) `resolvectl status` — qaysi DNS server ishlatilayotganini toping.
+      4) `docker run --rm alpine cat /etc/resolv.conf` — konteyner nima ishlatadi?
+    done: "dig va getent farqini tushuntirib, buzilishni 5 daqiqada topasiz."
+    resources:
+      - {title: "Ubuntu — systemd-resolved", url: "https://manpages.ubuntu.com/manpages/noble/man8/systemd-resolved.service.8.html"}
+    quiz:
+      - q: "Nima uchun `dig` /etc/hosts dagi yozuvni ko'rsatmaydi?"
+        options: ["Xato", "dig to'g'ridan-to'g'ri DNS serverga so'rov yuboradi, nsswitch'ni chetlab", "/etc/hosts eskirgan", "Root kerak"]
+        answer: 1
+        why: "Tizim yo'lini tekshirish uchun getent ishlating."
+      - q: "Ubuntu'da hozirgi DNS serverlarni ko'rish?"
+        options: ["cat /etc/hostname", "resolvectl status", "ip route", "ss -u"]
+        answer: 1
+        why: "/etc/resolv.conf ko'pincha 127.0.0.53 stub'ini ko'rsatadi."
+    hardcore:
+      - "VPS'da `dnsmasq` yoki `unbound` bilan lokal keshlovchi resolver o'rnating, `dig` bilan birinchi va ikkinchi so'rov vaqtini solishtiring."
+
+  - key: net-07-http
+    title: "HTTP: metodlar, status kodlar, headerlar"
+    theory: |
+      HTTP so'rov: metod (GET, POST, PUT, PATCH, DELETE), yo'l, headerlar (Host, Content-Type, Authorization, User-Agent), body. Javob: status kod, headerlar, body.
+      Status kodlar: 2xx muvaffaqiyat, 301/302 redirect, 304 not modified, 400 noto'g'ri so'rov, 401 autentifikatsiya yo'q, 403 taqiqlangan, 404, 429 juda ko'p so'rov, 500 ilova xatosi, 502 bad gateway, 503 mavjud emas, 504 gateway timeout. `curl -v`, `-I` (faqat headerlar), `-L` (redirect'ga ergashish), `-X POST -d`.
+    task: |
+      1) `curl -v https://httpbin.org/get` — so'rov va javob headerlarini belgilang.
+      2) `curl -I http://github.com` — redirect zanjirini `-L` bilan kuzating.
+      3) `curl -X POST -H 'Content-Type: application/json' -d '{"a":1}' https://httpbin.org/post`.
+      4) httpbin'ning /status/502, /delay/5 endpointlari bilan `--max-time 2` ni sinang.
+    done: "401/403, 502/504 farqini misol bilan tushuntira olasiz."
+    resources:
+      - {title: "MDN — HTTP overview", url: "https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview"}
+      - {title: "httpbin.org", url: "https://httpbin.org/"}
+    quiz:
+      - q: "401 va 403 farqi?"
+        options: ["Farqi yo'q", "401 — kim ekaningiz noma'lum; 403 — siz tanilgansiz, lekin ruxsat yo'q", "403 server xatosi", "401 sahifa yo'q"]
+        answer: 1
+        why: "Authentication vs authorization."
+      - q: "Reverse proxy ortidagi ilova javob berishga ulgurmadi. Qaysi kod?"
+        options: ["502", "504", "500", "404"]
+        answer: 1
+        why: "504 Gateway Timeout; 502 — upstream yo'q yoki noto'g'ri javob."
+    hardcore:
+      - "Faqat `nc` (yoki `/dev/tcp`) bilan qo'lda HTTP/1.1 GET so'rov yuborib javobni oling — headerlarni o'zingiz yozing."
+
+  - key: net-08-tls
+    title: "HTTPS va TLS sertifikatlar"
+    theory: |
+      TLS — shifrlash va server haqiqiyligini isbotlash. Sertifikat: domen nomi (SAN), muddati, kim imzolagan (CA). Zanjir: server sertifikati → intermediate → root CA (brauzerda ishonchli ro'yxat). SNI — bitta IP'da ko'p domen uchun client domen nomini oldindan aytadi.
+      Asboblar: `openssl s_client -connect host:443 -servername host`, `openssl x509 -noout -dates -subject`, `curl -vI https://...`. Klassik incident: sertifikat muddati o'tib ketgan.
+    task: |
+      1) `echo | openssl s_client -connect github.com:443 -servername github.com 2>/dev/null | openssl x509 -noout -dates -subject -issuer`.
+      2) Zanjirni `-showcerts` bilan ko'ring — nechta sertifikat?
+      3) `curl https://expired.badssl.com` va `curl -k` farqi; badssl.com'dagi boshqa holatlarni sinang.
+      4) Self-signed sertifikat yarating: `openssl req -x509 -newkey rsa:2048 -nodes -days 30`.
+    done: "Sertifikat muddatini bir qatorli buyruq bilan chiqarasiz."
+    resources:
+      - {title: "How HTTPS Works", url: "https://howhttps.works/"}
+      - {title: "badssl.com", url: "https://badssl.com/"}
+    quiz:
+      - q: "`curl -k` nima qiladi va qachon xavfli?"
+        options: ["Tezlashtiradi", "Sertifikat tekshiruvini o'chiradi — production'da MITM'ga yo'l ochadi", "Siqadi", "Kalit yaratadi"]
+        answer: 1
+        why: "Faqat test uchun; production kodida hech qachon."
+      - q: "SNI nima uchun kerak?"
+        options: ["Shifrlash uchun", "Bitta IP'da bir nechta domen sertifikatini to'g'ri tanlash uchun", "DNS uchun", "Siqish uchun"]
+        answer: 1
+        why: "Client handshake'da domen nomini yuboradi."
+    hardcore:
+      - "O'z mini CA'ingizni yarating (root + intermediate), u bilan server sertifikatini imzolab, nginx'da ishlating va root'ni tizimga ishonchli qilib qo'shib, `curl` xatosiz ishlashini isbotlang."
+
+  - key: net-09-ssh
+    title: "SSH chuqur: kalitlar, config, agent"
+    theory: |
+      SSH kalit juftligi: `ssh-keygen -t ed25519 -C "izoh"`. Private kalit sizda (600, hech kimga bermang), public — serverda ~/.ssh/authorized_keys. `ssh-copy-id user@host`. `ssh-agent` + `ssh-add` — passphrase'ni bir marta kiritish.
+      ~/.ssh/config: `Host contabo` → HostName, User, Port, IdentityFile; `ProxyJump bastion` — bastion orqali private serverga. known_hosts — server haqiqiyligi (MITM himoyasi).
+    task: |
+      1) Passphrase'li ed25519 kalit yarating, agent'ga qo'shing.
+      2) ~/.ssh/config: `contabo` alias; endi `ssh contabo` bilan kiring.
+      3) Server tomonda: `PasswordAuthentication no`, `PermitRootLogin no` (avval kalit bilan deploy kirishini tekshiring!), `sshd -t`, reload.
+      4) Ikki terminal ochiq holda sinang — xato bo'lsa birinchisi bilan qaytarasiz.
+    done: "Parol bilan kirish rad etiladi, `ssh contabo` ishlaydi."
+    resources:
+      - {title: "SSH Academy", url: "https://www.ssh.com/academy/ssh"}
+      - {title: "Mozilla — OpenSSH guidelines", url: "https://infosec.mozilla.org/guidelines/openssh"}
+    quiz:
+      - q: "SSH sozlamasini o'zgartirishdan oldin eng muhim ehtiyot chorasi?"
+        options: ["Reboot", "Ochiq ikkinchi sessiyani saqlab, `sshd -t` bilan tekshirish", "Parolni o'zgartirish", "Kalitni o'chirish"]
+        answer: 1
+        why: "Aks holda o'zingizni serverdan qulflab qo'yishingiz mumkin."
+      - q: "ProxyJump nima qiladi?"
+        options: ["Port ochadi", "Oraliq (bastion) server orqali maqsadli serverga ulanadi", "Kalit yaratadi", "Fayl ko'chiradi"]
+        answer: 1
+        why: "Private subnetdagi serverlarga kirishning standart usuli."
+    hardcore:
+      - "Faqat bitta buyruq bajara oladigan cheklangan kalit sozlang (`authorized_keys` da `command=\"...\",no-port-forwarding`) — CI deploy uchun shunday ishlatiladi."
+
+  - key: net-10-tunnels
+    title: "SSH tunnellar, scp va rsync"
+    theory: |
+      Local forward `ssh -L 5433:localhost:5432 contabo` — serverdagi yopiq Postgres'ga lokal 5433 orqali (portni internetga ochmasdan!). Remote forward `-R` — lokal servisni serverga chiqarish. Dynamic `-D 1080` — SOCKS proxy.
+      Fayl ko'chirish: `scp file host:/path`, `rsync -avz --delete src/ host:dst/` (faqat o'zgarganlar, oxiridagi / muhim!), `--dry-run` avval.
+    task: |
+      1) Serverda Postgres faqat 127.0.0.1 da; `ssh -L` orqali lokal psql/DBeaver bilan ulaning.
+      2) `-R` bilan lokal kompyuteringizdagi 3000-port servisni server orqali ko'rsating.
+      3) `rsync -avz --dry-run --delete` bilan papkani sinxronlang, keyin haqiqiy.
+      4) `src/` va `src` farqini rsync'da sinab ko'ring.
+    done: "Yopiq DB'ga tunnel orqali ulandingiz, rsync --delete xavfini tushunasiz."
+    resources:
+      - {title: "GfG — SSH Port Forwarding", url: "https://www.geeksforgeeks.org/computer-networks/ssh-port-forwarding/"}
+      - {title: "man rsync", url: "https://download.samba.org/pub/rsync/rsync.1"}
+    quiz:
+      - q: "Serverdagi 127.0.0.1:5432 ga lokal 5433 orqali ulanish?"
+        options: ["ssh -R 5433:localhost:5432 srv", "ssh -L 5433:localhost:5432 srv", "ssh -D 5433 srv", "ssh -p 5432 srv"]
+        answer: 1
+        why: "-L local forward."
+      - q: "`rsync src/ dst/` va `rsync src dst/` farqi?"
+        options: ["Farqi yo'q", "Birinchisi src ichidagilarni, ikkinchisi src papkaning o'zini ko'chiradi", "Ikkinchisi tezroq", "Birinchisi o'chiradi"]
+        answer: 1
+        why: "Oxiridagi / — 'mazmuni' degani."
+    hardcore:
+      - "autossh bilan doimiy reverse tunnel'ni systemd servis qiling — uy kompyuteringizdagi servis serveringiz orqali doim ochiq tursin (xavfsiz chegaralar bilan)."
+
+  - key: net-11-firewall
+    title: "Firewall: iptables tushunchasi va ufw"
+    theory: |
+      Kernel netfilter paketlarni zanjirlar bo'yicha tekshiradi: INPUT (serverga), OUTPUT (serverdan), FORWARD (orqali). iptables/nftables — past darajadagi qoidalar; ufw — Ubuntu'dagi oddiy qatlam.
+      Siyosat: default deny incoming, allow outgoing, faqat kerakli portlar (22, 80, 443). `ufw allow from IP to any port 22` — manbani cheklash. MUHIM tuzoq: Docker iptables'ni o'zi boshqaradi, `-p 5432:5432` ufw'ni chetlab ochiladi — `127.0.0.1:5432:5432` ishlating.
+    task: |
+      1) `ufw default deny incoming`, `allow 22/tcp`, `allow 80,443/tcp`, `ufw enable` (SSH sessiyani yo'qotmang!).
+      2) `ufw status numbered`, bitta qoidani o'chiring va qaytaring.
+      3) `sudo iptables -L -n -v | head -40` — ufw qanday qoidalar yaratganini ko'ring.
+      4) Docker bilan `-p 6379:6379` redis ishga tushirib, tashqaridan `nc -zv IP 6379` qiling — ochiqmi? `127.0.0.1:` bilan tuzating.
+    done: "Docker + ufw tuzog'ini o'zingiz ko'rib tuzatdingiz."
+    resources:
+      - {title: "DigitalOcean — UFW Essentials", url: "https://www.digitalocean.com/community/tutorials/ufw-essentials-common-firewall-rules-and-commands"}
+      - {title: "Docker docs — Packet filtering and firewalls", url: "https://docs.docker.com/engine/network/packet-filtering-firewalls/"}
+    quiz:
+      - q: "ufw yoqilgan, lekin Docker publish qilgan port tashqaridan ochiq. Nega?"
+        options: ["ufw buzilgan", "Docker o'z iptables qoidalarini ufw qoidalaridan oldin qo'shadi", "Postgres ochadi", "Mumkin emas"]
+        answer: 1
+        why: "Bind 127.0.0.1 yoki DOCKER-USER zanjiri bilan cheklang."
+      - q: "Xavfsiz default siyosat?"
+        options: ["Hammasi ochiq", "Kiruvchi hammasi yopiq, faqat kerakli portlar ochiq", "Hammasi yopiq, SSH ham", "Faqat chiquvchi yopiq"]
+        answer: 1
+        why: "Default deny — least exposure."
+    hardcore:
+      - "DOCKER-USER zanjiriga qoida qo'shib, Docker publish qilgan portlarga faqat sizning IP'ingizdan kirishga ruxsat bering; reboot'dan keyin ham saqlanishini ta'minlang."
+
+  - key: net-12-troubleshoot-lab
+    kind: lab
+    title: "LAB: 'Sayt ochilmayapti' — qatlamma-qatlam"
+    theory: |
+      Haqiqiy ishdagi eng ko'p savol. Tartibli yondashuv: 1) DNS — nom to'g'ri IP'ga aylanyaptimi (`dig`, `getent`); 2) L3 — IP'ga yetib bo'ladimi (`ping`, `mtr`); 3) L4 — port ochiqmi (`nc -zv`, `ss -tulpn` serverda); 4) firewall (`ufw status`); 5) L7 — ilova javob beryaptimi (`curl -v`, loglar); 6) TLS (`openssl s_client`).
+      Har qadamda gipoteza → tekshirish → natija. Taxmin bilan emas, dalil bilan harakat qiling.
+    task: |
+      Lab tayyorlash (o'zingiz buzasiz, keyin unutib tuzatasiz — yoki do'stingiz buzsin):
+      A) demo servisni 127.0.0.1 ga bind qiling; B) ufw'da 8080 ni yoping; C) /etc/hosts'da nomni noto'g'ri IP'ga yo'naltiring.
+      1) Har holat uchun qatlamma-qatlam tekshiruvni bajarib, sababni toping.
+      2) Har bir holat uchun "belgi → buyruq → sabab → tuzatish" jadvalini yozing.
+      3) Bu jadval sizning shaxsiy troubleshooting runbook'ingiz bo'ladi.
+    done: "3 ta holatning har birini 10 daqiqa ichida topdingiz va runbook yozildi."
+    resources:
+      - {title: "Julia Evans — Bite Size Networking", url: "https://wizardzines.com/zines/bite-size-networking/"}
+    quiz:
+      - q: "`nc -zv IP 80` muvaffaqiyatli, `curl` 502 qaytaradi. Keyingi qadam?"
+        options: ["DNS tekshirish", "Reverse proxy va backend ilova loglarini tekshirish", "Kabelni tekshirish", "Firewall'ni o'chirish"]
+        answer: 1
+        why: "L4 joyida, muammo L7 (upstream)."
+      - q: "Serverda `ss -tulpn` 127.0.0.1:8080 ko'rsatadi. Tashqaridan ulanib bo'lmaydi. Sabab?"
+        options: ["Firewall", "Servis faqat localhost'da tinglayapti", "DNS", "TLS"]
+        answer: 1
+        why: "Tashqi kirish uchun 0.0.0.0 yoki reverse proxy kerak."
+    hardcore:
+      - "Troubleshooting'ni avtomatlashtiring: `diag.sh <url>` barcha qatlamlarni ketma-ket tekshirib, birinchi muvaffaqiyatsiz qatlamda to'xtab sababni taxmin qilsin."
+
+  - key: net-13-tcpdump
+    title: "tcpdump va paketlarni tahlil qilish"
+    theory: |
+      tcpdump — trafikni ushlash: `tcpdump -i any -nn port 443`, `host 1.2.3.4`, `-w file.pcap` (saqlash, keyin Wireshark'da ochish), `-c 100` (soni). Filtrlar BPF sintaksisida: `tcp and port 80 and not host 10.0.0.1`.
+      Qachon kerak: "so'rov serverga yetib keladimi?", "javob qaytadimi?", "kim kim bilan gaplashyapti?". TLS ichini ko'rmaysiz, lekin ulanish o'rnatilishini (SYN/RST) ko'rasiz. RST — port yopiq; javobsiz SYN — firewall tashlab yuboryapti.
+    task: |
+      1) `tcpdump -i any -nn port 53` ochib, boshqa oynada `dig github.com` — so'rov va javobni ko'ring.
+      2) Yopiq portga `nc -zv localhost 9999` qilib RST'ni ko'ring.
+      3) ufw bilan bloklangan portga tashqaridan ulanib, serverda javobsiz SYN'ni ko'ring.
+      4) `-w` bilan pcap saqlab, Wireshark'da oching (lokal kompyuterda).
+    done: "RST va javobsiz SYN farqini tcpdump'da ko'rsata olasiz."
+    resources:
+      - {title: "Julia Evans — tcpdump zine", url: "https://wizardzines.com/zines/tcpdump/"}
+      - {title: "Daniel Miessler — tcpdump tutorial", url: "https://danielmiessler.com/p/tcpdump/"}
+    quiz:
+      - q: "SYN yuborildi, RST qaytdi. Bu nima?"
+        options: ["Firewall tashladi", "Host bor, lekin portda hech kim tinglamayapti", "DNS xato", "TLS xato"]
+        answer: 1
+        why: "Firewall odatda javob bermasdan tashlaydi (timeout)."
+      - q: "Ushlangan trafikni keyin tahlil qilish uchun?"
+        options: ["-v", "-w file.pcap", "-c", "-nn"]
+        answer: 1
+        why: "pcap'ni Wireshark'da ochish mumkin."
+    hardcore:
+      - "tcpdump yordamida HTTP (TLS'siz) so'rovdagi Authorization headerini ushlab ko'rsating — va shu bilan nima uchun HTTPS majburiy ekanini 3 jumlada isbotlang."
+
+  - key: net-14-proxies
+    title: "Proxy, load balancer va CDN tushunchalari"
+    theory: |
+      Forward proxy — client nomidan internetga chiqadi (korporativ tarmoq). Reverse proxy — serverlar oldida turib so'rovlarni qabul qiladi: TLS terminatsiya, keshlash, yuklamani taqsimlash (nginx, HAProxy, Traefik, AWS ALB).
+      Load balancing: L4 (TCP darajasida, tez) va L7 (HTTP darajasida: yo'l, header bo'yicha). Algoritmlar: round-robin, least connections, ip-hash. Health check — o'lik backend'ni ro'yxatdan chiqarish. CDN — statik kontentni foydalanuvchiga yaqin keshlash.
+    task: |
+      1) Uchala tushunchani diagramma bilan jurnalga chizing (client → ? → server).
+      2) `curl -sI https://www.cloudflare.com | grep -i -E 'server|cf-'` — CDN headerlarini toping.
+      3) Mashhur saytlarning `Server`, `Via`, `X-Cache` headerlarini solishtiring.
+      4) L4 va L7 load balancer'ga bittadan misol holat yozing.
+    done: "Reverse proxy'ning 4 ta vazifasini sanab bera olasiz."
+    resources:
+      - {title: "Cloudflare — What is a reverse proxy?", url: "https://www.cloudflare.com/learning/cdn/glossary/reverse-proxy/"}
+      - {title: "Cloudflare — What is load balancing?", url: "https://www.cloudflare.com/learning/performance/what-is-load-balancing/"}
+    quiz:
+      - q: "Reverse proxy'ning vazifasi bo'lmagan narsa?"
+        options: ["TLS terminatsiya", "Yuklamani taqsimlash", "Client'larning internetga chiqishini nazorat qilish", "Keshlash"]
+        answer: 2
+        why: "Bu forward proxy vazifasi."
+      - q: "URL yo'li bo'yicha (`/api` → A, `/` → B) yo'naltirish qaysi darajada?"
+        options: ["L4", "L7", "L3", "L2"]
+        answer: 1
+        why: "HTTP mazmunini ko'rish L7 talab qiladi."
+    hardcore:
+      - "HAProxy'ni Docker'da ishga tushirib, 2 backend orasida L4 (tcp mode) va L7 (http mode) balanslashni sozlang va farqni loglarda ko'rsating."
+
+  - key: net-15-netns
+    title: "Network namespaces va veth: Docker tarmog'i ichidan"
+    theory: |
+      Docker konteynerining tarmog'i — Linux network namespace: o'z interfeyslari, routing jadvali, iptables. Host bilan veth juftligi (virtual kabel) va bridge (docker0) orqali ulanadi; tashqariga NAT (MASQUERADE) bilan chiqadi.
+      Buni qo'lda qurish Docker, Kubernetes CNI va AWS VPC'ni tushunishning eng yaxshi yo'li: `ip netns add`, `ip link add veth0 type veth peer name veth1`, `ip link set veth1 netns ns1`, `ip addr add`, `ip link add br0 type bridge`.
+    task: |
+      1) `ns1` va `ns2` namespace'lar, `br0` bridge, ikki veth juftligi yarating.
+      2) 10.10.0.0/24 dan IP'lar bering, ns1 → ns2 ping qiling.
+      3) NAT qoidasi bilan ns1 dan internetga chiqing (`iptables -t nat -A POSTROUTING -s 10.10.0.0/24 -j MASQUERADE`, ip_forward=1).
+      4) Buyruqlarni `netns-lab.sh` qilib saqlang (va tozalash skripti).
+    done: "ns1 dan `ping 1.1.1.1` ishlaydi — Docker bridge'ni qo'lda yasadingiz."
+    resources:
+      - {title: "iximiuz — Container networking is simple", url: "https://iximiuz.com/en/posts/container-networking-is-simple/"}
+    quiz:
+      - q: "veth juftligi nima?"
+        options: ["Fizik karta", "Ikki uchli virtual kabel: bir uchidan kirgan paket ikkinchisidan chiqadi", "Firewall", "DNS"]
+        answer: 1
+        why: "Namespace'larni bir-biriga va bridge'ga ulaydi."
+      - q: "Konteyner private IP bilan internetga qanday chiqadi?"
+        options: ["To'g'ridan-to'g'ri", "Host'dagi NAT (MASQUERADE) orqali", "DNS orqali", "Chiqa olmaydi"]
+        answer: 1
+        why: "Docker shu qoidani avtomatik qo'shadi."
+    hardcore:
+      - "`docker run` qilib, `docker inspect` dan PID olib, `nsenter -t PID -n ip a` bilan konteyner namespace'iga kiring va host'dagi mos veth'ni `ip link` dagi ifindex orqali toping."
+
+  - key: net-16-wireguard
+    title: "VPN va WireGuard asoslari"
+    theory: |
+      VPN — ochiq tarmoq ustida shifrlangan xususiy tunnel. Foydalanish: serverlarni xususiy tarmoqda birlashtirish, admin panellarni internetga ochmasdan kirish, ofis–cloud ulanishi. WireGuard — zamonaviy, tez, oddiy (UDP, kalit juftliklari, `wg-quick`).
+      Konfig: [Interface] PrivateKey, Address, ListenPort; [Peer] PublicKey, AllowedIPs (qaysi manzillar tunnel orqali), Endpoint. AllowedIPs = 0.0.0.0/0 — butun trafik, aniq subnet — faqat xususiy tarmoq (split tunnel).
+    task: |
+      1) VPS'da WireGuard server o'rnating (`apt install wireguard`), kalitlar yarating.
+      2) Lokal kompyuteringizni peer qiling; 10.66.66.0/24 tarmog'i.
+      3) Admin servisni (masalan Adminer) faqat wg0 interfeysida oching, tashqaridan yopiq ekanini tekshiring.
+      4) `wg show` natijasini o'qing.
+    done: "Admin servis faqat VPN orqali ochiladi."
+    resources:
+      - {title: "WireGuard — Quick Start", url: "https://www.wireguard.com/quickstart/"}
+      - {title: "DigitalOcean — Set up WireGuard on Ubuntu", url: "https://www.digitalocean.com/community/tutorials/how-to-set-up-wireguard-on-ubuntu-22-04"}
+    quiz:
+      - q: "WireGuard'da AllowedIPs = 10.66.66.0/24 nimani bildiradi?"
+        options: ["Butun trafik VPN'dan", "Faqat shu subnet'ga trafik tunnel orqali (split tunnel)", "Hech narsa", "Faqat DNS"]
+        answer: 1
+        why: "0.0.0.0/0 bo'lsa — full tunnel."
+      - q: "WireGuard qaysi transportda ishlaydi?"
+        options: ["TCP", "UDP", "ICMP", "HTTP"]
+        answer: 1
+        why: "Default port 51820/udp."
+    hardcore:
+      - "Ikkinchi VPS (yoki lokal VM) qo'shib, ikki server orasida site-to-site WireGuard sozlang va ular orasidagi Postgres replikatsiya/ulanishni faqat tunnel orqali qiling."
+
+  - key: net-17-security
+    title: "Tarmoq xavfsizligi: ochiq portlar auditi"
+    theory: |
+      Hujum yuzasi (attack surface) — tashqaridan ko'rinadigan hamma narsa. Har ochiq port — potensial kirish eshigi. nmap — o'z serverlaringizni skanerlash: `nmap -sV -p- host` (barcha portlar, versiya). Faqat o'zingizga tegishli serverlarni skanerlang!
+      Amaliy qoidalar: DB va cache hech qachon internetga ochiq emas; admin panellar VPN orqasida; SSH kalit bilan; rate limiting; xizmat banner'larida versiyani yashirish.
+    task: |
+      1) Lokal kompyuteringizdan o'z VPS'ingizni `nmap -sV -Pn -p- IP` bilan skanerlang (bir necha daqiqa).
+      2) Har topilgan port uchun: kerakmi? kim uchun? yopish mumkinmi?
+      3) Keraksizlarini yoping, qayta skanerlang.
+      4) `ss -tulpn` va nmap natijasini solishtiring — farq nimadan?
+    done: "Tashqaridan faqat 22, 80, 443 ko'rinadi."
+    resources:
+      - {title: "Nmap Reference Guide", url: "https://nmap.org/book/man.html"}
+      - {title: "OWASP — Attack Surface Analysis", url: "https://cheatsheetseries.owasp.org/cheatsheets/Attack_Surface_Analysis_Cheat_Sheet.html"}
+    quiz:
+      - q: "Qaysi biri internetga ochiq bo'lmasligi kerak?"
+        options: ["443", "80", "5432 (Postgres)", "22 (kalit bilan, cheklangan)"]
+        answer: 2
+        why: "DB'ga faqat ichki tarmoq yoki tunnel orqali."
+      - q: "`ss` da port ko'rinadi, nmap'da yo'q. Sabab?"
+        options: ["nmap buzilgan", "Firewall tashqi kirishni bloklayapti yoki servis 127.0.0.1 da", "Port yopiq", "DNS"]
+        answer: 1
+        why: "ss — ichki ko'rinish, nmap — tashqi."
+    hardcore:
+      - "Haftalik avtomatik tashqi skan: GitHub Actions (yoki boshqa server) dan nmap bilan VPS'ingizni skanerlab, kutilmagan port paydo bo'lsa Telegram'ga alert yuborsin."
+
+  - key: net-18-project
+    kind: project
+    title: "LOYIHA: netcheck — tarmoq diagnostika vositasi"
+    theory: |
+      Modul yakuni: 3 haftalik tarmoq bilimini bitta foydali vositaga yig'amiz. netcheck istalgan URL yoki host uchun barcha qatlamlarni tekshirib, aniq hisobot beradi — keyinchalik incident paytida birinchi ishlatadigan quroling bo'ladi.
+    task: |
+      `netcheck` (bash yoki Python, tanlov sizda) repo:
+      1) `netcheck https://example.com`: DNS (A, TTL, qaysi resolver) → TCP port → TLS (muddat, issuer, zanjir) → HTTP (status, vaqt, redirectlar).
+      2) Har qatlam uchun ✅/❌ va birinchi xatoda tavsiya.
+      3) `--json` chiqish (keyin monitoring'ga ulash uchun).
+      4) Ko'p URL uchun fayldan o'qish va parallel tekshirish.
+      5) README: misollar, arxitektura, qanday kengaytirish.
+    done: "netcheck 3 xil buzilish holatini to'g'ri aniqlaydi, repo GitHub'da."
+    resources:
+      - {title: "milanm — Networking & Security", url: "https://github.com/milanm/DevOps-Roadmap#4-learn-networking--security"}
+      - {title: "GfG — Computer Network Tutorial", url: "https://www.geeksforgeeks.org/computer-networks/computer-network-tutorials/"}
+    quiz:
+      - q: "Diagnostika vositasida qatlamlarni qaysi tartibda tekshirish to'g'ri?"
+        options: ["HTTP → TLS → TCP → DNS", "DNS → TCP → TLS → HTTP", "TLS → DNS → HTTP", "Tartib muhim emas"]
+        answer: 1
+        why: "Pastki qatlam ishlamasa, yuqorisini tekshirish ma'nosiz."
+    hardcore:
+      - "netcheck'ni Prometheus formatida (`/metrics`) natija beradigan kichik exporter'ga aylantiring — J4 monitoring modulida ishlatasiz."

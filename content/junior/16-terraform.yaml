@@ -1,0 +1,455 @@
+# J3 · Terraform · 31–33-hafta (18 dars)
+lessons:
+  - key: tf-01-intro
+    title: "IaC va Terraform: HCL, provider, install"
+    theory: |
+      Infrastructure as Code — infratuzilmani kod bilan tasvirlash: takrorlanuvchan, review qilinadigan, Git tarixi bor. Terraform — deklarativ ("nima bo'lishi kerak"), provider'lar orqali yuzlab platforma (AWS, Cloudflare, GitHub, hatto Telegram emas, lekin ko'p narsa). Ansible — server ICHINI sozlaydi, Terraform — serverlar va cloud resurslarini YARATADI.
+      HCL bloklari: `terraform { required_providers }`, `provider "aws" { region = ... }`, `resource "aws_s3_bucket" "b" { ... }`. OpenTofu — Terraform'ning ochiq manbali fork'i, sintaksis bir xil.
+    task: |
+      1) Terraform o'rnating (rasmiy repo yoki tfenv), `terraform version`.
+      2) `main.tf`: AWS provider (versiya qotirilgan), bitta S3 bucket.
+      3) `terraform init` — `.terraform/` va `.terraform.lock.hcl` nima ekanini o'qing.
+      4) .gitignore: `.terraform/`, `*.tfstate*`, `*.tfvars` (sirlar bo'lsa).
+    done: "init muvaffaqiyatli, lock fayl nima uchun commit qilinishini tushunasiz."
+    resources:
+      - {title: "HashiCorp — Terraform tutorials (AWS)", url: "https://developer.hashicorp.com/terraform/tutorials/aws-get-started"}
+      - {title: "GfG — What is Terraform", url: "https://www.geeksforgeeks.org/devops/what-is-terraform/"}
+    quiz:
+      - q: "Terraform va Ansible'ning odatiy vazifa bo'linishi?"
+        options: ["Bir xil", "Terraform — resurslarni yaratish (provisioning); Ansible — server ichidagi konfiguratsiya", "Ansible — cloud, Terraform — server", "Terraform faqat AWS"]
+        answer: 1
+        why: "Ko'pincha birga ishlatiladi."
+      - q: ".terraform.lock.hcl ni Git'ga commit qilish kerakmi?"
+        options: ["Yo'q", "Ha — provider versiyalari hamma joyda bir xil bo'lishi uchun", "Faqat CI'da", "Ixtiyoriy emas, taqiqlangan"]
+        answer: 1
+        why: "Takrorlanuvchanlik."
+    hardcore:
+      - "Xuddi shu konfiguratsiyani OpenTofu bilan ham `init/plan` qiling va farqlarni jurnalga yozing."
+
+  - key: tf-02-workflow
+    title: "init, plan, apply, destroy va data source"
+    theory: |
+      Asosiy sikl: `init` → `plan` (nima o'zgarishini ko'rsatadi: + yaratish, ~ o'zgartirish, - o'chirish, -/+ almashtirish) → `apply` → `destroy`. Plan'ni har doim diqqat bilan o'qing, ayniqsa `-/+` (qayta yaratish — ma'lumot yo'qolishi mumkin!).
+      `data` bloki — mavjud resurslarni o'qish (masalan eng yangi Ubuntu AMI: `data "aws_ami"`), `terraform output`, `terraform show`, `terraform console`.
+    task: |
+      1) `data "aws_ami"` bilan eng yangi Ubuntu 24.04 AMI'ni toping.
+      2) EC2 resurs (o'sha AMI, Free plan mos turi, tag'lar).
+      3) `plan -out tfplan` → `apply tfplan`; konsolda tekshiring.
+      4) Instance tag'ini o'zgartirib plan'ni o'qing (~), keyin instance turini o'zgartirib (ko'pincha ~ yoki -/+); oxirida `destroy`.
+    done: "Plan belgilarini (+, ~, -, -/+) o'qiy olasiz; resurslar o'chirildi."
+    resources:
+      - {title: "Terraform — Core workflow", url: "https://developer.hashicorp.com/terraform/intro/core-workflow"}
+    quiz:
+      - q: "Plan'da `-/+` nimani bildiradi?"
+        options: ["Kichik o'zgarish", "Resurs o'chirilib, qayta yaratiladi", "Faqat o'qish", "Xato"]
+        answer: 1
+        why: "DB uchun bu ma'lumot yo'qolishi bo'lishi mumkin."
+      - q: "`plan -out tfplan` + `apply tfplan` ning afzalligi?"
+        options: ["Tezroq", "Ko'rib chiqilgan aynan o'sha reja qo'llanadi", "Kerak emas", "Xavfsiz emas"]
+        answer: 1
+        why: "Plan va apply orasida holat o'zgarsa ham kutilmagan narsa bo'lmaydi."
+    hardcore:
+      - "`terraform graph | dot -Tpng` bilan resurslar bog'liqlik grafini chizing va tushuntiring."
+
+  - key: tf-03-vars
+    title: "Variables, outputs, locals va tfvars"
+    theory: |
+      `variable "env" { type = string; default = "dev"; validation { ... } }`, `sensitive = true` (plan va loglarda yashiriladi). Qiymat manbalari: default, `terraform.tfvars`, `*.auto.tfvars`, `-var`, `TF_VAR_env` env. `locals` — hisoblangan qiymatlar va umumiy tag'lar. `output` — natijalar (IP, endpoint), boshqa modullar va CI uchun.
+      Tiplar: string, number, bool, list, map, object — tiplangan o'zgaruvchilar xatolarni erta ushlaydi.
+    task: |
+      1) `variables.tf`: env (validation: dev|prod), instance_type, allowed_ssh_cidr.
+      2) `locals { common_tags = { Project = "devops-quest", Env = var.env } }` va hamma resurslarga.
+      3) `outputs.tf`: instance public IP va ID.
+      4) `dev.tfvars` va `prod.tfvars` bilan plan farqini ko'ring.
+    done: "Bir xil kod ikki tfvars bilan ikki xil muhitni tasvirlaydi."
+    resources:
+      - {title: "Terraform — Input variables", url: "https://developer.hashicorp.com/terraform/language/values/variables"}
+    quiz:
+      - q: "`sensitive = true` nima qiladi?"
+        options: ["Shifrlaydi state'da", "Plan va CLI chiqishida qiymatni yashiradi (lekin state'da ochiq!)", "O'chiradi", "Majburiy qiladi"]
+        answer: 1
+        why: "State faylini himoyalash alohida masala."
+      - q: "Umumiy tag'larni bir joyda saqlash uchun?"
+        options: ["output", "locals", "data", "provider"]
+        answer: 1
+        why: "Yoki provider'ning default_tags."
+    hardcore:
+      - "AWS provider'ning `default_tags` blokini ishlatib, barcha resurslarga tag'larni avtomatik qo'ying va bitta resursda override qiling."
+
+  - key: tf-04-state
+    title: "State: nima, nega xavfli"
+    theory: |
+      State (terraform.tfstate) — Terraform'ning "xotirasi": kod ↔ haqiqiy resurslar xaritasi va ularning atributlari. Sirlar (DB parollari) state'da ochiq matnda bo'lishi mumkin — state = maxfiy fayl. Lokal state jamoada ishlamaydi va yo'qolishi mumkin.
+      Buyruqlar: `terraform state list`, `state show`, `state mv` (resursni qayta nomlash), `state rm` (Terraform boshqaruvidan chiqarish, resursni o'chirmasdan). Qo'lda tahrirlash — oxirgi chora.
+    task: |
+      1) Kichik konfig apply qilib, tfstate faylini o'qing (jq bilan).
+      2) `state list`, `state show`.
+      3) Resurs nomini kodda o'zgartiring — plan nima taklif qiladi? `moved` bloki yoki `state mv` bilan qayta yaratmasdan hal qiling.
+      4) `state rm` qilib, plan'da resurs "yangi" ko'rinishini va AWS'da hali borligini tekshiring; tozalang.
+    done: "State'ning roli va xavfini misollar bilan tushuntira olasiz."
+    resources:
+      - {title: "Terraform — State", url: "https://developer.hashicorp.com/terraform/language/state"}
+    quiz:
+      - q: "Nima uchun tfstate Git'ga commit qilinmaydi?"
+        options: ["Katta", "Sirlarni ochiq matnda saqlashi mumkin va jamoaviy ishda konflikt keltiradi", "Kerak emas", "Binary"]
+        answer: 1
+        why: "Remote backend ishlatiladi."
+      - q: "`terraform state rm` resursni nima qiladi?"
+        options: ["AWS'dan o'chiradi", "Faqat state'dan chiqaradi — resurs cloud'da qoladi", "Qayta yaratadi", "Bloklaydi"]
+        answer: 1
+        why: "Boshqaruvdan chiqarish."
+    hardcore:
+      - "Ataylab lokal state faylini o'chirib, keyin `import` bloklari bilan barcha resurslarni qayta state'ga oling (tiklash mashqi)."
+
+  - key: tf-05-remote-state
+    title: "Remote state: S3 backend va locking"
+    theory: |
+      Remote backend — state'ni umumiy, xavfsiz joyda saqlash: S3 bucket (versioning + shifrlash + public access block) va locking (bir vaqtda ikki apply bo'lmasligi uchun). Hozirgi AWS provider/Terraform versiyalarida S3'ning o'zida lock fayl (`use_lockfile = true`) qo'llab-quvvatlanadi; eski usul — DynamoDB jadvali.
+      "Tovuq va tuxum": backend bucket'ini alohida kichik `bootstrap` konfig bilan yarating.
+    task: |
+      1) `bootstrap/`: state bucket (versioning, shifrlash, block public, prevent_destroy).
+      2) Asosiy konfigda `backend "s3"` (key: `devops-quest/dev/terraform.tfstate`, `use_lockfile = true`).
+      3) `terraform init -migrate-state` bilan lokal state'ni ko'chiring.
+      4) Ikki terminalda bir vaqtda `apply` qilib, lock xatosini ko'ring.
+    done: "State S3'da, lock ishlaydi."
+    resources:
+      - {title: "Terraform — S3 backend", url: "https://developer.hashicorp.com/terraform/language/backend/s3"}
+    quiz:
+      - q: "State locking nima uchun kerak?"
+        options: ["Tezlik", "Ikki kishi bir vaqtda apply qilib state'ni buzishining oldini olish", "Shifrlash", "Narx"]
+        answer: 1
+        why: "Race condition — buzilgan state."
+      - q: "State bucket'ida versioning nima uchun?"
+        options: ["Kerak emas", "Buzilgan yoki o'chirilgan state'ni oldingi versiyadan tiklash", "Tezlik", "Majburiy"]
+        answer: 1
+        why: "State — eng qimmatli fayl."
+    hardcore:
+      - "Bootstrap konfigining o'zini ham (o'z yaratgan) S3 backend'ga ko'chiring va bu jarayonni qadamma-qadam hujjatlang."
+
+  - key: tf-06-lab
+    kind: lab
+    title: "LAB: drift va buzilgan state"
+    theory: |
+      Drift — kimdir konsolda qo'lda o'zgartirgan resurs (kod va haqiqat farqi). `terraform plan` uni ko'rsatadi; `terraform plan -refresh-only` faqat state'ni haqiqatga moslaydi. Qaror: kodni haqiqatga moslash yoki haqiqatni kodga qaytarish (apply).
+      Boshqa holatlar: osilib qolgan lock (`terraform force-unlock ID` — faqat boshqa jarayon ishlamayotganiga ishonch hosil qilganda), qo'lda o'chirilgan resurs (plan qayta yaratishni taklif qiladi).
+    task: |
+      1) EC2 va SG apply qiling. Konsolda SG'ga qo'lda qoida qo'shing — plan nimani ko'rsatadi? Apply bilan qaytaring.
+      2) Konsolda EC2 tag'ini o'zgartiring — `plan -refresh-only` va oddiy plan farqi.
+      3) Konsolda EC2'ni qo'lda terminate qiling — plan?
+      4) Apply'ni Ctrl+C bilan to'xtatib lock holatini ko'ring, force-unlock bilan hal qiling. Tozalang.
+    done: "3 xil drift va lock holatini hal qildingiz."
+    resources:
+      - {title: "Terraform — Manage resource drift", url: "https://developer.hashicorp.com/terraform/tutorials/state/resource-drift"}
+    quiz:
+      - q: "Konsolda qo'lda o'zgartirilgan resursni Terraform qanday ko'radi?"
+        options: ["Ko'rmaydi", "Keyingi plan'da drift sifatida — kodga qaytarishni taklif qiladi", "Avtomatik qabul qiladi", "Xato beradi"]
+        answer: 1
+        why: "Kod — haqiqat manbai."
+      - q: "`force-unlock` qachon xavfsiz?"
+        options: ["Har doim", "Faqat lock'ni egallab turgan jarayon haqiqatan ishlamayotganiga ishonch hosil qilganda", "Hech qachon", "Har apply'dan oldin"]
+        answer: 1
+        why: "Aks holda ikki apply state'ni buzadi."
+    hardcore:
+      - "Har kecha `terraform plan -detailed-exitcode` ishga tushirib, drift (exit 2) topilsa Telegram'ga xabar beradigan rejalashtirilgan CI workflow yozing."
+
+  - key: tf-07-meta
+    title: "count, for_each, depends_on, lifecycle"
+    theory: |
+      `count = 3` — N ta nusxa (indeks bo'yicha; o'rtadagisini olib tashlash keyingilarini qayta yaratadi!). `for_each = toset(["a","b"])` yoki map — kalit bo'yicha barqaror nusxalar (afzal). `depends_on` — yashirin bog'liqlik uchun (kamdan-kam kerak).
+      `lifecycle`: `create_before_destroy` (uzilishsiz almashtirish), `prevent_destroy` (tasodifiy o'chirishdan himoya — DB, state bucket), `ignore_changes` (tashqi tizim o'zgartiradigan atributlar). Dynamic bloklar — takrorlanuvchi ichki bloklar (SG qoidalari).
+    task: |
+      1) `count = 3` bilan 3 subnet; o'rtadagisini olib tashlab plan'ni ko'ring.
+      2) Xuddi shuni `for_each` (map: nom → CIDR) bilan qayta yozib, bir elementni olib tashlang — farq?
+      3) SG ingress qoidalarini `dynamic` blok bilan ro'yxatdan generatsiya qiling.
+      4) RDS (yoki S3 bucket) ga `prevent_destroy` qo'yib `destroy` qilishga urining.
+    done: "count va for_each farqini plan orqali isbotladingiz."
+    resources:
+      - {title: "Terraform — for_each", url: "https://developer.hashicorp.com/terraform/language/meta-arguments/for_each"}
+      - {title: "Terraform — lifecycle", url: "https://developer.hashicorp.com/terraform/language/meta-arguments/lifecycle"}
+    quiz:
+      - q: "Nima uchun ko'pincha `for_each` `count` dan yaxshi?"
+        options: ["Tezroq", "Kalit bo'yicha manzillanadi — ro'yxatdan element olib tashlash boshqalarini qayta yaratmaydi", "Kamroq kod", "Majburiy"]
+        answer: 1
+        why: "count indeksi siljiydi."
+      - q: "DB'ni tasodifan `destroy` qilishdan himoya?"
+        options: ["depends_on", "lifecycle { prevent_destroy = true }", "count = 0", "ignore_changes"]
+        answer: 1
+        why: "Destroy plan xato bilan to'xtaydi."
+    hardcore:
+      - "count asosidagi resurslarni `moved` bloklari bilan for_each'ga hech narsani qayta yaratmasdan ko'chiring."
+
+  - key: tf-08-modules1
+    title: "Modullar 1: o'z modulingiz"
+    theory: |
+      Modul — papka (`modules/network/`) ichidagi .tf fayllar: kirish (variables), resurslar, chiqish (outputs). Root modul uni `module "network" { source = "./modules/network"; cidr = "10.0.0.0/16" }` bilan chaqiradi, natijani `module.network.vpc_id` bilan oladi.
+      Yaxshi modul: bitta aniq vazifa, tushunarli kirish/chiqishlar, README, minimal default'lar, ichida provider bloki yo'q.
+    task: |
+      1) `modules/network`: VPC, public/private subnetlar (for_each), IGW, route table'lar; outputs: vpc_id, subnet id'lari.
+      2) Root'dan dev uchun chaqiring.
+      3) `modules/web`: SG + EC2, kirish sifatida subnet_id va vpc_id.
+      4) Har modulga README (inputs/outputs jadvali).
+    done: "Network va web modullari ishlaydi."
+    resources:
+      - {title: "Terraform — Modules", url: "https://developer.hashicorp.com/terraform/language/modules"}
+    quiz:
+      - q: "Modul natijasini boshqa joyda ishlatish?"
+        options: ["var.x", "module.<nom>.<output>", "data.x", "local.x"]
+        answer: 1
+        why: "Faqat output'lar tashqariga ko'rinadi."
+      - q: "Qayta ishlatiladigan modul ichida provider bloki bo'lishi kerakmi?"
+        options: ["Ha, majburiy", "Yo'q — provider root modulda sozlanadi", "Faqat AWS uchun", "Farqi yo'q"]
+        answer: 1
+        why: "Modul turli region/akkauntlarda ishlatilishi uchun."
+    hardcore:
+      - "terraform-docs bilan modul README'larini avtomatik generatsiya qiling va pre-commit hook qilib qo'shing."
+
+  - key: tf-09-modules2
+    title: "Modullar 2: registry va versiyalash"
+    theory: |
+      Terraform Registry — tayyor modullar: masalan `terraform-aws-modules/vpc/aws` (minglab jamoalar sinagan). Har doim versiyani qotiring (`version = "~> 5.0"`). O'z modullaringizni Git tag bilan versiyalang: `source = "git::https://github.com/user/tf-modules.git//network?ref=v1.0.0"`.
+      Qaror: oddiy narsa uchun o'zingiz yozing (tushunish uchun), murakkab va standart narsa uchun registry modulini oling (lekin ichini o'qing!).
+    task: |
+      1) O'z network modulingiz o'rniga `terraform-aws-modules/vpc/aws` ni ishlating — plan'ni solishtiring.
+      2) Modul ichidagi kodni o'qib, nimalar qo'shimcha yaratilishini toping.
+      3) O'z modullaringizni alohida repo'ga chiqarib `v1.0.0` tag qo'ying va Git source bilan chaqiring.
+      4) Modulga o'zgarish qilib `v1.1.0` — root'da versiyani yangilash oqimini ko'ring.
+    done: "Versiyalangan Git modul va registry modul ishlatildi."
+    resources:
+      - {title: "Terraform Registry — AWS VPC module", url: "https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/latest"}
+      - {title: "Terraform — Module sources", url: "https://developer.hashicorp.com/terraform/language/modules/sources"}
+    quiz:
+      - q: "Modul versiyasini qotirmaslik xavfi?"
+        options: ["Yo'q", "Keyingi init'da yangi (buzuvchi) versiya kelib infratuzilmani kutilmaganda o'zgartirishi mumkin", "Sekin", "Ishlamaydi"]
+        answer: 1
+        why: "Takrorlanuvchanlik buziladi."
+      - q: "`~> 5.0` nimani bildiradi?"
+        options: ["Faqat 5.0", "5.x (5.0 va undan yuqori, lekin 6.0 dan past)", "5 dan yuqori hammasi", "Eng oxirgi"]
+        answer: 1
+        why: "Pessimistik cheklov."
+    hardcore:
+      - "Registry VPC moduli NAT Gateway'ni default yaratadimi? Uni o'chirib, NAT instance yoki faqat VPC endpoints bilan arzon variant yarating va narxini hisoblang."
+
+  - key: tf-10-envs
+    title: "Muhitlar: workspaces va papka strukturasi"
+    theory: |
+      Ikki yondashuv: 1) workspaces (`terraform workspace new prod`) — bir kod, alohida state'lar; oddiy, lekin muhitlar farqlari ko'payganda chalkash. 2) Papkalar: `envs/dev/`, `envs/prod/` — har biri modullarni o'z qiymatlari va o'z backend key'i bilan chaqiradi; aniqroq, ko'p jamoalar shuni afzal ko'radi.
+      Prod va dev'ni alohida AWS akkauntlarida saqlash — eng xavfsiz (Middle bosqichida).
+    task: |
+      1) `envs/dev` va `envs/prod` papkalari, umumiy `modules/`.
+      2) Har biri alohida backend key va tfvars.
+      3) Xuddi shuni workspaces bilan ham sinab ko'ring va farqlarni yozing.
+      4) Qaysi yondashuvni tanlaganingizni asoslang.
+    done: "dev va prod alohida state'lar bilan."
+    resources:
+      - {title: "Terraform — Workspaces", url: "https://developer.hashicorp.com/terraform/language/state/workspaces"}
+    quiz:
+      - q: "Muhitlarni papkalar bilan ajratishning afzalligi?"
+        options: ["Kam kod", "Muhitlar farqi aniq ko'rinadi, tasodifan noto'g'ri workspace'da apply qilish xavfi yo'q", "Tezroq", "Majburiy"]
+        answer: 1
+        why: "Workspace'ni almashtirishni unutish — klassik xato."
+      - q: "Muhitlarning eng kuchli izolyatsiyasi?"
+        options: ["Workspace", "Alohida AWS akkauntlari", "Tag'lar", "Alohida region"]
+        answer: 1
+        why: "IAM chegarasi."
+    hardcore:
+      - "Terragrunt bilan envs strukturasini DRY qiling (umumiy backend va provider konfiguratsiyasi bitta joyda)."
+
+  - key: tf-11-vpc-ec2
+    title: "Terraform bilan VPC + EC2 + ALB"
+    theory: |
+      Endi aws-24 loyihasida qo'lda qurgan arxitekturani kodga aylantiramiz. Bu dars: network moduli + ALB + ASG (launch template, user data — Docker va image ECR'dan). Har resurs uchun konsoldagi qo'lda qadamni eslang — Terraform aynan o'sha API chaqiruvlarini qiladi.
+    task: |
+      1) `modules/network` (2 AZ, NAT'siz yoki arzon variant).
+      2) `modules/app`: ALB (public), target group (health check), ASG (private yoki public subnetlarda — narxga qarab asoslang), launch template, IAM instance profile (SSM + ECR read).
+      3) ALB DNS nomini output qiling va brauzerda oching.
+      4) `destroy` va hamma narsa o'chganini tekshiring.
+    done: "Butun web qatlami `apply` bilan ko'tariladi va `destroy` bilan tozalanadi."
+    resources:
+      - {title: "Terraform AWS provider — aws_lb", url: "https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb"}
+      - {title: "Terraform AWS provider — aws_autoscaling_group", url: "https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/autoscaling_group"}
+    quiz:
+      - q: "Launch template o'zgarganda ASG instance'lari avtomatik yangilanadimi?"
+        options: ["Ha, darhol", "Yo'q — instance_refresh bloki yoki qo'lda refresh kerak", "Faqat reboot'da", "Hech qachon"]
+        answer: 1
+        why: "Terraform'da `instance_refresh` sozlanadi."
+      - q: "EC2'ga ECR'dan image tortish huquqi qanday beriladi?"
+        options: ["Access key user data'da", "IAM instance profile (role) bilan ECR read policy", "Public ECR", "SSH"]
+        answer: 1
+        why: "Kalitsiz."
+    hardcore:
+      - "ASG'ga `instance_refresh` qo'shib, user data o'zgarganda rolling yangilanish ALB orqali uzilishsiz bo'lishini isbotlang."
+
+  - key: tf-12-rds
+    title: "Terraform bilan RDS va sirlar"
+    theory: |
+      RDS'ni Terraform bilan: subnet group, SG (manba = app SG), parametr group, `deletion_protection` va `prevent_destroy`, `skip_final_snapshot` (dev'da true, prod'da false!). Parol: `random_password` + SSM Parameter Store (SecureString), yoki `manage_master_user_password = true` (RDS parolni Secrets Manager'da o'zi boshqaradi). Parol state'ga tushadi — state himoyasi muhim.
+    task: |
+      1) `modules/db`: subnet group, SG, RDS PostgreSQL (kichik, private).
+      2) Parol `random_password` + `aws_ssm_parameter` (SecureString); app instance role faqat shu parametrni o'qiy oladi.
+      3) dev'da `skip_final_snapshot = true`, prod tfvars'da false va `deletion_protection = true`.
+      4) App'dan ulanishni tekshiring; destroy.
+    done: "DB va uning sirlari kod bilan, prod himoyalari yoqilgan."
+    resources:
+      - {title: "Terraform AWS provider — aws_db_instance", url: "https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance"}
+    quiz:
+      - q: "Prod RDS uchun `skip_final_snapshot`?"
+        options: ["true", "false — o'chirishdan oldin oxirgi snapshot olinsin", "Farqi yo'q", "null"]
+        answer: 1
+        why: "Tasodifiy destroy'dan keyin tiklash imkoniyati."
+      - q: "`random_password` bilan yaratilgan parol qayerda saqlanadi?"
+        options: ["Hech qayerda", "State'da (ochiq) — shuning uchun state himoyalanishi kerak", "Faqat SSM'da", "Kodda"]
+        answer: 1
+        why: "Yoki manage_master_user_password bilan state'dan chetlash."
+    hardcore:
+      - "`manage_master_user_password = true` ga o'tib, parol state'da yo'qligini va ilova Secrets Manager'dan o'qishini isbotlang."
+
+  - key: tf-13-lab
+    kind: lab
+    title: "LAB: plan'dagi xavfli almashtirish"
+    theory: |
+      Ba'zi atributlar o'zgarishi resursni qayta yaratadi ("forces replacement") — masalan RDS identifier, subnet CIDR, EC2 AMI (lifecycle'ga qarab). Plan'da `# forces replacement` izohi. DB yoki stateful resurs uchun bu falokat bo'lishi mumkin.
+      Himoya: plan'ni har doim o'qish, `prevent_destroy`, CI'da plan'da destroy bo'lsa qo'shimcha tasdiqlash, `create_before_destroy` mos joyda.
+    task: |
+      1) RDS identifier'ni o'zgartirib plan'ni o'qing — `forces replacement` ni toping.
+      2) `prevent_destroy` bo'lganda nima bo'lishini ko'ring.
+      3) Subnet CIDR'ni o'zgartirib, bog'liq resurslar zanjirini plan'da kuzating.
+      4) Plan JSON'ini (`terraform show -json tfplan | jq`) tahlil qilib, delete amallarini avtomatik topuvchi skript yozing.
+    done: "Plan'da xavfli almashtirishni avtomatik aniqlaydigan skriptingiz bor."
+    resources:
+      - {title: "Terraform — JSON output format (plan)", url: "https://developer.hashicorp.com/terraform/internals/json-format"}
+    quiz:
+      - q: "Plan'dagi `# forces replacement` nimani bildiradi?"
+        options: ["Kichik o'zgarish", "Bu atribut o'zgarishi resursni o'chirib qayta yaratadi", "Xato", "Faqat tag"]
+        answer: 1
+        why: "Stateful resurslarda ehtiyot bo'ling."
+      - q: "CI'da plan'da destroy bo'lsa nima qilish kerak?"
+        options: ["Avtomatik apply", "Qo'shimcha tasdiqlash talab qilish yoki to'xtatish", "E'tiborsiz qoldirish", "Plan'ni o'chirish"]
+        answer: 1
+        why: "Inson tekshiruvi."
+    hardcore:
+      - "O'sha skriptni CI'ga qo'shing: plan'da DB yoki S3 bucket o'chirilishi bo'lsa PR'ga ogohlantirish izohi yozsin va apply'ni bloklasin."
+
+  - key: tf-14-import
+    title: "import va moved bloklari"
+    theory: |
+      Qo'lda yaratilgan resurslarni Terraform boshqaruviga olish: `import { to = aws_s3_bucket.b; id = "bucket-name" }` (Terraform 1.5+) va `terraform plan -generate-config-out=generated.tf` — kodni avtomatik generatsiya qiladi (keyin tozalaysiz). Eski usul — `terraform import` buyrug'i.
+      `moved { from = aws_instance.web; to = module.app.aws_instance.web }` — kodni qayta tashkil qilganda resurslarni qayta yaratmasdan ko'chirish.
+    task: |
+      1) Konsolda qo'lda S3 bucket va SG yarating.
+      2) `import` bloklari va `-generate-config-out` bilan ularni kodga oling, generatsiya qilingan kodni tozalang.
+      3) Plan'da "no changes" bo'lguncha kodni moslang.
+      4) Resursni modulga ko'chirib, `moved` bloki bilan qayta yaratmasdan hal qiling.
+    done: "Qo'lda yaratilgan resurslar Terraform boshqaruvida, plan toza."
+    resources:
+      - {title: "Terraform — Import", url: "https://developer.hashicorp.com/terraform/language/import"}
+      - {title: "Terraform — Refactoring (moved)", url: "https://developer.hashicorp.com/terraform/language/modules/develop/refactoring"}
+    quiz:
+      - q: "Mavjud qo'lda yaratilgan resursni boshqaruvga olish?"
+        options: ["Qayta yaratish", "import bloki (+ generate-config-out)", "state rm", "data bloki"]
+        answer: 1
+        why: "Resurs saqlanadi, state'ga qo'shiladi."
+      - q: "`moved` bloki nima uchun?"
+        options: ["Resursni boshqa region'ga ko'chirish", "Kodda manzil o'zgarganda qayta yaratmasdan state'ni moslash", "Import", "Backup"]
+        answer: 1
+        why: "Refactoring xavfsiz bo'ladi."
+    hardcore:
+      - "aws-24 loyihasida qo'lda qurgan (agar hali bo'lsa) yoki yangidan qo'lda yaratilgan 5 ta resursni import qilib, ularni o'z modullaringiz tuzilmasiga moslang."
+
+  - key: tf-15-quality
+    title: "fmt, validate, tflint, checkov"
+    theory: |
+      Sifat va xavfsizlik vositalari: `terraform fmt -check` (format), `terraform validate` (sintaksis va mantiq), tflint (provider'ga xos xatolar, masalan mavjud bo'lmagan instance turi), checkov yoki trivy config (xavfsizlik: ochiq SG, shifrlanmagan bucket, public RDS). Hammasi pre-commit va CI'da.
+    task: |
+      1) pre-commit: terraform_fmt, terraform_validate, tflint, terraform_docs.
+      2) `checkov -d .` (yoki `trivy config .`) — topilganlarni tuzating yoki asos bilan skip qiling.
+      3) Ataylab 0.0.0.0/0 dan 22-portga ochiq SG yozib, ushlanishini ko'ring.
+      4) Natijalar jadvali: vosita → topilgan → tuzatilgan.
+    done: "pre-commit va checkov toza (yoki asoslangan istisnolar bilan)."
+    resources:
+      - {title: "pre-commit-terraform", url: "https://github.com/antonbabenko/pre-commit-terraform"}
+      - {title: "Checkov docs", url: "https://www.checkov.io/"}
+    quiz:
+      - q: "`terraform validate` va tflint farqi?"
+        options: ["Bir xil", "validate — til darajasida; tflint — provider'ga xos va eng yaxshi amaliyot xatolari", "tflint format", "validate xavfsizlik"]
+        answer: 1
+        why: "Ikkalasi bir-birini to'ldiradi."
+      - q: "checkov nimani topadi?"
+        options: ["Sintaksis", "IaC'dagi xavfsizlik va siyosat buzilishlari (ochiq portlar, shifrlashsiz resurslar)", "Narx", "Tezlik"]
+        answer: 1
+        why: "Shift-left IaC uchun."
+    hardcore:
+      - "Infracost bilan PR'da infratuzilma o'zgarishining oylik narx farqini izoh sifatida ko'rsating."
+
+  - key: tf-16-ci
+    title: "Terraform CI'da: plan PR'da, apply merge'da (OIDC)"
+    theory: |
+      Standart oqim: PR → CI'da fmt/validate/tflint/checkov + `terraform plan` → plan natijasi PR izohiga → review → merge → main'da `apply` (environment tasdiqlash bilan). AWS'ga kirish — OIDC (J2'da o'rgangansiz): IAM role trust policy faqat sizning repo va branch'ingizga ruxsat beradi; plan uchun read-only role, apply uchun kengroq role.
+      Atlantis, HCP Terraform — shu oqimni tayyor beradigan vositalar.
+    task: |
+      1) AWS'da GitHub OIDC provider va ikki IAM role (plan: read-only, apply: kerakli huquqlar), trust policy `repo:user/repo:*` va `ref:refs/heads/main`.
+      2) `terraform.yml`: PR'da plan + PR izohi; main'da apply (production environment).
+      3) Hech qanday AWS access key secret'da yo'qligini tasdiqlang.
+      4) Kichik o'zgarish bilan to'liq oqimni sinang.
+    done: "Infratuzilma faqat PR orqali, kalitsiz o'zgaradi."
+    resources:
+      - {title: "GitHub Docs — Configuring OIDC in AWS", url: "https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services"}
+      - {title: "aws-actions/configure-aws-credentials", url: "https://github.com/aws-actions/configure-aws-credentials"}
+    quiz:
+      - q: "Nima uchun plan va apply uchun alohida role'lar?"
+        options: ["Majburiy", "PR'dagi (hali review'dan o'tmagan) kod faqat o'qish huquqiga ega bo'lishi uchun", "Tezlik", "Narx"]
+        answer: 1
+        why: "Least privilege."
+      - q: "OIDC trust policy'dagi `sub` sharti nima qiladi?"
+        options: ["Hech narsa", "Faqat ma'lum repo/branch'dan kelgan job'lar role'ni ola olishini cheklaydi", "Region tanlaydi", "Narx"]
+        answer: 1
+        why: "Boshqa repo'lar sizning AWS'ingizga kira olmaydi."
+    hardcore:
+      - "Plan artefaktini PR'da saqlab, apply'da aynan o'sha plan faylini qo'llang (plan va apply orasida o'zgarish bo'lsa xato bersin)."
+
+  - key: tf-17-ansible
+    title: "Terraform + Ansible birgalikda"
+    theory: |
+      Terraform resurslarni yaratadi va output beradi (IP'lar, tag'lar); Ansible ularning ichini sozlaydi. Ulash usullari: Terraform output → generatsiya qilingan inventory fayli; yoki Ansible'ning `amazon.aws.aws_ec2` dinamik inventory plugin'i (tag'lar bo'yicha guruhlash) — eng yaxshi usul.
+      Qoida: EC2 user data minimal (masalan SSM agent), qolgan konfiguratsiya — Ansible'da; yoki immutable yondashuv — Packer AMI + minimal user data.
+    task: |
+      1) Terraform: 2 EC2 `Role=web` tegi bilan (Contabo o'rniga yoki qo'shimcha).
+      2) Ansible `aws_ec2` dinamik inventory: `Role` tegi bo'yicha guruhlar.
+      3) J3'dagi Ansible rollarini shu EC2'larga qo'llang (SSH yoki SSM connection).
+      4) Butun oqimni `make up` / `make down` bilan bitta buyruqqa yig'ing.
+    done: "`make up` bilan Terraform + Ansible butun muhitni ko'taradi."
+    resources:
+      - {title: "Ansible — amazon.aws.aws_ec2 inventory", url: "https://docs.ansible.com/ansible/latest/collections/amazon/aws/aws_ec2_inventory.html"}
+    quiz:
+      - q: "Ansible'ga Terraform yaratgan serverlarni bildirishning eng moslashuvchan usuli?"
+        options: ["Qo'lda IP yozish", "Cloud tag'lari asosidagi dinamik inventory", "Hardcode", "Email"]
+        answer: 1
+        why: "Serverlar o'zgarsa inventory avtomatik yangilanadi."
+      - q: "Immutable infratuzilma nima?"
+        options: ["O'zgarmas narx", "Serverlar joyida o'zgartirilmaydi — yangi image bilan almashtiriladi", "Faqat o'qish", "Backup"]
+        answer: 1
+        why: "Drift yo'q, rollback oson."
+    hardcore:
+      - "Ansible'ni SSH'siz, `aws_ssm` connection plugin orqali ishlating (22-port butunlay yopiq)."
+
+  - key: tf-18-project
+    kind: project
+    title: "LOYIHA: J3 muhitini Terraform bilan"
+    theory: |
+      Modul yakuni: aws-24'dagi qo'lda arxitektura endi to'liq kod — modullar, remote state, dev/prod, sifat tekshiruvlari, CI'da OIDC bilan plan/apply. Keyingi 2 haftalik J3 bosqich loyihasida unga ilova deploy, monitoring va DR qo'shasiz.
+    task: |
+      1) Modullar: network, app (ALB + ASG), db (RDS + SSM sirlar), monitoring (CloudWatch alarm + SNS).
+      2) envs/dev va envs/prod; S3 backend + lock.
+      3) pre-commit (fmt, validate, tflint, checkov, docs).
+      4) CI: PR plan izohi, main apply (OIDC).
+      5) README: arxitektura diagrammasi, modullar jadvali, `apply`/`destroy` vaqti va oylik narx taxmini.
+    done: "dev muhit `apply` bilan to'liq ko'tariladi va `destroy` bilan tozalanadi."
+    resources:
+      - {title: "milanm — Infrastructure as Code", url: "https://github.com/milanm/DevOps-Roadmap#8-learn-infrastructure-as-a-code-x-as-code"}
+      - {title: "HashiCorp — Terraform Associate (004) study guide", url: "https://developer.hashicorp.com/terraform/tutorials/certification-004/associate-study-004"}
+    quiz:
+      - q: "IaC loyihasining sifati qaysi mezon bilan eng yaxshi tekshiriladi?"
+        options: ["Kod uzunligi", "Toza akkauntda destroy → apply bilan muhit to'liq va xatosiz qayta ko'tarilishi", "Fayllar soni", "Modullar soni"]
+        answer: 1
+        why: "Takrorlanuvchanlik — IaC'ning maqsadi."
+    hardcore:
+      - "Terratest (Go) yoki `terraform test` (native) bilan network moduli uchun test yozing: apply → subnetlar sonini tekshirish → destroy."

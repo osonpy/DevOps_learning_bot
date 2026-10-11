@@ -1,0 +1,151 @@
+# J4 · Helm · 40-hafta (6 dars)
+lessons:
+  - key: helm-01-intro
+    title: "Helm: chart, release, repository"
+    theory: |
+      Helm — Kubernetes uchun paket menejeri: chart (shablonlangan manifestlar to'plami), values (sozlamalar), release (klasterga o'rnatilgan nusxa, versiyalar tarixi bilan). `helm repo add`, `helm search repo`, `helm install name chart -f values.yaml -n ns`, `helm list`, `helm uninstall`.
+      Tayyor chart'lar (ingress-nginx, cert-manager, kube-prometheus-stack, Bitnami) — infratuzilma komponentlarini o'rnatishning standart usuli.
+    task: |
+      1) Helm o'rnating, bitnami (yoki rasmiy) repo'dan Redis'ni kind'ga o'rnating.
+      2) `helm get values`, `helm get manifest` — nima o'rnatilganini ko'ring.
+      3) `helm show values` bilan sozlanadigan parametrlarni o'qing va o'zingizning values.yaml bilan qayta o'rnating.
+      4) `helm uninstall` — PVC'lar nima bo'ladi?
+    done: "Tayyor chart'ni o'z values'ingiz bilan o'rnatdingiz."
+    resources:
+      - {title: "Helm docs — Quickstart", url: "https://helm.sh/docs/intro/quickstart/"}
+      - {title: "Artifact Hub", url: "https://artifacthub.io/"}
+    quiz:
+      - q: "Helm release nima?"
+        options: ["Chart fayli", "Chart'ning klasterga o'rnatilgan nusxasi (o'z nomi va tarixi bilan)", "Docker image", "Git tag"]
+        answer: 1
+        why: "Bir chart'dan bir nechta release bo'lishi mumkin."
+      - q: "Chart sozlanadigan parametrlarini ko'rish?"
+        options: ["helm list", "helm show values <chart>", "helm status", "helm get"]
+        answer: 1
+        why: "Default values.yaml."
+    hardcore:
+      - "OCI registry'dan (GHCR) chart o'rnatishni sinab ko'ring: `helm install ... oci://...`."
+
+  - key: helm-02-structure
+    title: "Chart tuzilmasi: templates va values"
+    theory: |
+      `helm create mychart`: Chart.yaml (nom, versiya, appVersion), values.yaml, templates/ (deployment.yaml, service.yaml, _helpers.tpl, NOTES.txt). Shablonlarda `{{ .Values.image.tag }}`, `{{ .Release.Name }}`, `{{ .Chart.Name }}`. `helm template` — klastersiz render, `helm lint`.
+      Chart versiyasi (chart o'zgarishi) va appVersion (ilova versiyasi) — alohida.
+    task: |
+      1) `helm create devops-quest` va keraksiz shablonlarni olib tashlang.
+      2) k8s-22'dagi bot manifestlarini shablonga aylantiring: image, replicas, resources, env values'dan.
+      3) `helm template . | less` va `helm lint`.
+      4) `helm install bot . -n devops-quest --dry-run --debug`.
+    done: "Bot chart'i render bo'ladi va lint'dan o'tadi."
+    resources:
+      - {title: "Helm docs — Chart Template Guide", url: "https://helm.sh/docs/chart_template_guide/getting_started/"}
+    quiz:
+      - q: "Klasterga ulanmasdan shablon natijasini ko'rish?"
+        options: ["helm install", "helm template", "helm get", "kubectl apply"]
+        answer: 1
+        why: "CI'da ham foydali."
+      - q: "Chart.yaml dagi version va appVersion farqi?"
+        options: ["Bir xil", "version — chart'ning o'zi; appVersion — ichidagi ilova versiyasi", "appVersion majburiy", "version — Kubernetes versiyasi"]
+        answer: 1
+        why: "Ikkalasi mustaqil o'zgaradi."
+    hardcore:
+      - "values.schema.json yozing: noto'g'ri tipdagi values (masalan replicas: \"uch\") bilan install xato bersin."
+
+  - key: helm-03-templating
+    title: "Template funksiyalari, helpers va shartlar"
+    theory: |
+      Go template + Sprig funksiyalari: `default`, `quote`, `toYaml | nindent 4`, `required "xabar" .Values.x`, `if/else`, `range`, `with`. `_helpers.tpl` — `define`/`include` bilan qayta ishlatiladigan bloklar (label'lar, nomlar). `checksum/config` annotatsiyasi — ConfigMap o'zgarsa rolling restart.
+    task: |
+      1) `_helpers.tpl` da umumiy label'lar va fullname.
+      2) `ingress.enabled`, `networkPolicy.enabled`, `backup.enabled` shartlari.
+      3) `required` bilan majburiy values (bot token secret nomi).
+      4) ConfigMap checksum annotatsiyasi — konfig o'zgarganda pod restart bo'lishini tekshiring.
+    done: "Chart shartli komponentlar va majburiy qiymatlar bilan."
+    resources:
+      - {title: "Helm docs — Template Function List", url: "https://helm.sh/docs/chart_template_guide/function_list/"}
+    quiz:
+      - q: "`toYaml .Values.resources | nindent 12` nima qiladi?"
+        options: ["Xato beradi", "Map'ni YAML qilib, yangi qatordan 12 bo'shliq bilan joylaydi", "Shifrlaydi", "O'chiradi"]
+        answer: 1
+        why: "YAML indentatsiyasi — Helm'dagi eng ko'p xato manbai."
+      - q: "`required` funksiyasi?"
+        options: ["Default beradi", "Qiymat berilmasa render xato bilan to'xtaydi", "Validatsiya o'chiradi", "Majburiy chart"]
+        answer: 1
+        why: "Muhim konfigni unutib bo'lmaydi."
+    hardcore:
+      - "Library chart yarating (umumiy deployment/service shablonlari) va bot chart'i undan dependency sifatida foydalansin."
+
+  - key: helm-04-upgrade
+    title: "Upgrade, rollback va helm diff"
+    theory: |
+      `helm upgrade --install bot . -f values-prod.yaml --atomic --timeout 5m` — yo'q bo'lsa o'rnatadi, `--atomic` — muvaffaqiyatsiz bo'lsa avtomatik rollback. `helm history`, `helm rollback bot 3`. `helm diff upgrade` (plugin) — Terraform plan'ning Helm analogi: nima o'zgarishini oldindan ko'rsatadi.
+      Hooks: pre-install/pre-upgrade (masalan migratsiya Job).
+    task: |
+      1) helm-diff plugin o'rnating; values o'zgartirib `helm diff upgrade`.
+      2) `--atomic` bilan buzilgan image tag'i — avtomatik rollback'ni kuzating.
+      3) `helm history` va qo'lda `helm rollback`.
+      4) Migratsiya Job'ini `pre-upgrade` hook qiling.
+    done: "Buzilgan upgrade avtomatik qaytarildi, migratsiya hook ishlaydi."
+    resources:
+      - {title: "Helm docs — helm upgrade", url: "https://helm.sh/docs/helm/helm_upgrade/"}
+      - {title: "helm-diff plugin", url: "https://github.com/databus23/helm-diff"}
+    quiz:
+      - q: "`--atomic` flagi?"
+        options: ["Tezlashtiradi", "Upgrade muvaffaqiyatsiz bo'lsa avtomatik oldingi release'ga qaytaradi", "Shifrlaydi", "Lock qiladi"]
+        answer: 1
+        why: "Kutib turadi (wait) va yiqilsa rollback."
+      - q: "Upgrade'dan oldin o'zgarishlarni ko'rish?"
+        options: ["helm status", "helm diff upgrade (plugin)", "helm list", "helm lint"]
+        answer: 1
+        why: "Kutilmagan o'zgarishlarning oldini oladi."
+    hardcore:
+      - "Hook'ga `hook-delete-policy` va `hook-weight` qo'shib, ikki hook (DB backup, keyin migratsiya) tartibli ishlashini ta'minlang."
+
+  - key: helm-05-ci
+    title: "Helm CI'da: lint, test, publish"
+    theory: |
+      Chart sifati: `helm lint`, `helm template | kubeconform` (manifestlarni K8s sxemasiga tekshirish), chart-testing (ct) — o'zgargan chart'larni kind klasterda install/upgrade test qiladi. Publish: chart'ni OCI registry'ga (`helm push` GHCR'ga) yoki GitHub Pages chart repo'ga.
+      Deploy: CI image tag'ini `--set image.tag=` bilan berib `helm upgrade --install`.
+    task: |
+      1) CI: helm lint + kubeconform.
+      2) kind'da chart-testing (`ct install`) — GitHub Action'da.
+      3) Chart'ni GHCR'ga OCI sifatida push qiling.
+      4) Deploy workflow: `helm upgrade --install --atomic --set image.tag=${{ sha }}`.
+    done: "Chart CI'da test qilinadi va GHCR'dan deploy bo'ladi."
+    resources:
+      - {title: "chart-testing", url: "https://github.com/helm/chart-testing"}
+      - {title: "kubeconform", url: "https://github.com/yannh/kubeconform"}
+    quiz:
+      - q: "kubeconform nima tekshiradi?"
+        options: ["Image", "Render qilingan manifestlar Kubernetes API sxemasiga mosligini", "Narx", "Xavfsizlik faqat"]
+        answer: 1
+        why: "Noto'g'ri maydonlar klasterga borishidan oldin ushlanadi."
+      - q: "Chart'larni tarqatishning zamonaviy usuli?"
+        options: ["Email", "OCI registry (masalan GHCR)", "FTP", "Faqat Git"]
+        answer: 1
+        why: "Image'lar bilan bir joyda."
+    hardcore:
+      - "Chart'ni cosign bilan imzolab, deploy oldidan imzoni tekshiring."
+
+  - key: helm-06-project
+    kind: project
+    title: "LOYIHA: bot uchun Helm chart"
+    theory: |
+      Modul yakuni: botning to'liq Helm chart'i — barcha komponentlar shartli, values sxemasi bilan, CI'da test qilinadigan va GHCR'dan deploy bo'ladigan. Endi botni istalgan klasterga bitta buyruq bilan o'rnatish mumkin — sotish uchun ham qadam!
+    task: |
+      1) Chart: bot Deployment (Recreate), Postgres (dependency yoki tashqi DB tanlovi), migrate hook, backup CronJob, NetworkPolicy, Ingress (webhook rejimi uchun).
+      2) values.schema.json, README (values jadvali — helm-docs bilan).
+      3) values-dev.yaml (kind) va values-prod.yaml (k3s).
+      4) CI: lint, kubeconform, ct, OCI push, `--atomic` deploy.
+      5) Bo'sh kind klasterda `helm install` bilan to'liq ishlashini isbotlang.
+    done: "Bo'sh klasterga bot bitta helm buyrug'i bilan o'rnatiladi."
+    resources:
+      - {title: "Helm docs — Best Practices", url: "https://helm.sh/docs/chart_best_practices/"}
+      - {title: "helm-docs", url: "https://github.com/norwoodj/helm-docs"}
+    quiz:
+      - q: "Chart'da DB'ni 'dependency' qilish yoki tashqi DB — qanday tanlanadi?"
+        options: ["Har doim dependency", "values flag bilan: dev'da ichki, prod'da tashqi/managed DB", "Har doim tashqi", "Farqi yo'q"]
+        answer: 1
+        why: "Moslashuvchanlik."
+    hardcore:
+      - "Chart'ni Argo CD Application sifatida e'lon qilib, Git'dagi values o'zgarishi bilan avtomatik deploy bo'ladigan qiling."

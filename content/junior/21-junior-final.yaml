@@ -1,0 +1,140 @@
+# J4 · Junior yakuniy: portfolio va intervyu · 44-hafta (6 dars)
+# Junior gate: 3 ta GitHub loyiha, K8s'dagi ilova va uning monitoringi; Junior intervyu savollarining 80% iga javob.
+lessons:
+  - key: jf-01-portfolio
+    kind: project
+    title: "Portfolio audit: eng kuchli 3 loyiha"
+    theory: |
+      44 hafta davomida 20 dan ortiq repo yaratdingiz. Ish beruvchi 2–3 tasini ko'radi, har biriga 1–2 daqiqa. Tanlang: 1) DevOps Quest bot (CI/CD + K8s + Helm + monitoring — "end-to-end"), 2) AWS + Terraform muhit (IaC + cloud), 3) bittasi — ops vositasi yoki Ansible rollari. Har biri: aniq README, diagramma, "qanday ishga tushirish", natijalar raqamlarda.
+    task: |
+      1) 3 ta asosiy repo'ni tanlang va GitHub profilda pin qiling.
+      2) Har README'ni tekshiring: birinchi ekranda nima, nega, arxitektura, natija.
+      3) GitHub profil README: qisqa tanishtiruv, texnologiyalar, 3 loyiha havolasi.
+      4) Har repo'da CI yashil, sirlar yo'q (gitleaks), litsenziya bor.
+    done: "Profil va 3 ta pin'langan repo tayyor."
+    resources:
+      - {title: "GitHub Docs — Managing your profile README", url: "https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-github-profile/customizing-your-profile/managing-your-profile-readme"}
+    quiz:
+      - q: "Portfolio README'ning birinchi ekranida nima bo'lishi kerak?"
+        options: ["Litsenziya", "Loyiha nima qiladi, arxitektura va asosiy natijalar", "Commit tarixi", "Hazil"]
+        answer: 1
+        why: "O'quvchi 30 soniyada qaror qiladi."
+    hardcore:
+      - "Portfolio saytingizni (aws-10 dagi S3 + CloudFront) yangilang: 3 loyiha, diagrammalar va CI/CD bilan avtomatik deploy."
+
+  - key: jf-02-cv
+    kind: project
+    title: "DevOps CV va LinkedIn"
+    theory: |
+      DevOps CV: natijaga yo'naltirilgan qatorlar ("Deploy vaqtini 20 daqiqadan 4 daqiqaga qisqartirdim — GitHub Actions + Docker"), texnologiyalar bo'limi (darajalar bilan halol), loyihalar havolalari. Mavjud tajribangiz — backend dasturchi sifatida CRM integratsiyalari va botlar — DevOps uchun kuchli: production'da ishlaydigan tizimlar, integratsiyalar, deploy. Ingliz tilidagi versiya Saudiya va remote uchun majburiy; rus tilidagisi mahalliy bozor uchun foydali.
+    task: |
+      1) Bir sahifali CV (ingliz tilida): profil, tajriba (backend + DevOps loyihalar), loyihalar, ko'nikmalar, sertifikatlar (bo'lsa).
+      2) Har tajriba qatorini "harakat + vosita + raqamli natija" formatiga keltiring.
+      3) LinkedIn: sarlavha ("Backend Developer → DevOps Engineer | AWS, Kubernetes, Terraform"), About, Featured'da loyihalar.
+      4) CV'ni 3 ta haqiqiy Junior DevOps vakansiyasi talablari bilan solishtiring va bo'shliqlarni yozing.
+    done: "CV (EN) va LinkedIn yangilangan, bo'shliqlar ro'yxati bor."
+    resources:
+      - {title: "roadmap.sh — DevOps career path", url: "https://roadmap.sh/devops/career-path"}
+      - {title: "roadmap.sh — DevOps skills", url: "https://roadmap.sh/devops/skills"}
+    quiz:
+      - q: "CV qatori uchun yaxshiroq variant?"
+        options: ["Docker bilan ishladim", "Botni Docker + GitHub Actions bilan konteynerlashtirib, qo'lda 15 daqiqalik deploy'ni 3 daqiqalik avtomatik pipeline'ga aylantirdim", "Ko'p narsa bilaman", "DevOps qildim"]
+        answer: 1
+        why: "Aniq harakat, vosita va natija."
+    hardcore:
+      - "CV'ni ATS skanerlari uchun tekshiring (oddiy format, kalit so'zlar vakansiyadan) va 2 ta versiya tayyorlang: AWS-yo'naltirilgan va on-prem/GitLab-yo'naltirilgan."
+
+  - key: jf-03-interview-linux
+    title: "Intervyu: Linux, tarmoq va skripting"
+    theory: |
+      Junior DevOps intervyusining katta qismi asoslardan: Linux (jarayonlar, ruxsatlar, systemd, disk to'lishi, load average), tarmoq ("brauzerga URL yozilganda nima bo'ladi?", DNS, TCP, HTTP kodlari, TLS), bash (skript yozish, pipe, grep/awk), troubleshooting senariylari ("server sekin", "sayt ochilmayapti"). Takrorlash kartalaringiz aynan shu savollar uchun tayyorlagan.
+    task: |
+      1) "URL yozilganda nima bo'ladi" savoliga 3 daqiqalik og'zaki javob — ovozga yozib, eshiting.
+      2) 10 ta Linux va tarmoq savoliga javoblarni (o'z jurnalingizdan) qisqa yozing.
+      3) Live coding mashqi: 15 daqiqada log fayldan top-5 IP va 5xx foizini chiqaruvchi skript.
+      4) Troubleshooting senariy: "disk 100%" — qadamma-qadam og'zaki javob.
+    done: "4 ta mashq yozib olingan, zaif joylar belgilangan."
+    resources:
+      - {title: "roadmap.sh — DevOps interview questions", url: "https://roadmap.sh/questions/devops"}
+      - {title: "What happens when you type a URL (GitHub)", url: "https://github.com/alex/what-happens-when"}
+    quiz:
+      - q: "'Server sekin' savoliga birinchi qadam?"
+        options: ["Reboot", "Tez holat tekshiruvi: uptime/load, top, free, df, iostat — qaysi resurs to'yingan", "Kod yozish", "Kutish"]
+        answer: 1
+        why: "USE metodi — dalil bilan boshlash."
+      - q: "Intervyuda bilmagan savolga eng yaxshi javob?"
+        options: ["O'ylab topish", "Halol 'bilmayman' va qanday aniqlashingizni (qayerdan, qanday) aytish", "Mavzuni o'zgartirish", "Jim turish"]
+        answer: 1
+        why: "Fikrlash jarayoni — baholanadigan narsa."
+    hardcore:
+      - "Brendan Gregg'ning '60 soniyada Linux performance tahlili' ro'yxatidagi 10 buyruqni xotiradan bajarib, har birining natijasini tushuntiring."
+
+  - key: jf-04-interview-tools
+    title: "Intervyu: Docker, CI/CD, Kubernetes, cloud"
+    theory: |
+      Asboblar bo'yicha savollar odatda "nima va nega" darajasida: konteyner vs VM, image layerlar, multi-stage, CMD vs ENTRYPOINT; CI vs CD, pipeline bosqichlari, sirlar; Pod/Deployment/Service, probes, rolling update, CrashLoopBackOff debug; Terraform state, plan; AWS VPC public/private, IAM role; monitoring: metrikalar vs loglar, alert dizayni. Eng kuchli javob — o'z loyihangizdan misol bilan.
+    task: |
+      1) Har mavzudan 5 ta savol (jami 25) va o'z loyihangizdan misolli qisqa javoblar.
+      2) "Pipeline'ingizni tushuntiring" — 5 daqiqalik og'zaki taqdimot (diagramma bilan).
+      3) Mock: do'st yoki AI bilan 30 daqiqalik intervyu, keyin xatolarni tahlil qiling.
+      4) Eng zaif 3 mavzuni keyingi 2 haftaga takrorlash rejasiga qo'shing.
+    done: "25 savol javoblari va mock intervyu tahlili tayyor."
+    resources:
+      - {title: "GfG — DevOps Interview Questions", url: "https://www.geeksforgeeks.org/devops/devops-interview-questions/"}
+    quiz:
+      - q: "Intervyuda texnik javobni nima kuchaytiradi?"
+        options: ["Uzunlik", "O'z loyihangizdan aniq misol va raqamlar", "Atamalar soni", "Tezlik"]
+        answer: 1
+        why: "Amaliy tajriba isboti."
+      - q: "'Kubernetes'da pod ishga tushmayapti' — javobingiz tartibi?"
+        options: ["Klasterni qayta o'rnatish", "get pods → describe (Events) → logs --previous → manifest/resurslar", "Node reboot", "Helm uninstall"]
+        answer: 1
+        why: "K8s LAB'laridagi runbook."
+    hardcore:
+      - "Botingiz arxitekturasi bo'yicha 10 daqiqalik ingliz tilidagi video-taqdimot yozib, LinkedIn'ga joylang."
+
+  - key: jf-05-system-design
+    title: "Junior system design: 'ilovani production'ga chiqaring'"
+    theory: |
+      Junior darajasida system design savoli odatda: "Bu Python ilovani production'ga qanday chiqarasiz?" Kutilgan javob tuzilmasi: talablarni aniqlashtirish (yuklama, mavjudlik, budjet) → arxitektura (DNS, LB, compute, DB, cache, storage) → deploy (CI/CD, konteyner, IaC) → kuzatuv (metrikalar, loglar, alertlar) → xavfsizlik (sirlar, tarmoq, IAM) → backup/DR → trade-off'lar. 44 haftalik ishingizning hammasi shu savolga javob.
+    task: |
+      1) "Kuniga 10 000 foydalanuvchili Telegram bot + admin panel" uchun 45 daqiqalik dizayn mashqi (qog'oz yoki Excalidraw).
+      2) Ikki variant: bitta VPS (arzon) va AWS (masshtablanuvchi) — trade-off jadvali.
+      3) Har komponent uchun "nega shu, nega boshqasi emas" — bir jumla.
+      4) Diagrammani portfolio'ga qo'shing.
+    done: "Ikki variantli dizayn va trade-off jadvali tayyor."
+    resources:
+      - {title: "System Design Primer (GitHub)", url: "https://github.com/donnemartin/system-design-primer"}
+    quiz:
+      - q: "System design javobini nimadan boshlash kerak?"
+        options: ["Kubernetes'dan", "Talablar va cheklovlarni aniqlashtirishdan", "Narxdan", "Kod yozishdan"]
+        answer: 1
+        why: "Talab bilmasdan tanlangan arxitektura — taxmin."
+      - q: "Kichik yuklama va kichik budjet uchun ko'pincha to'g'ri tanlov?"
+        options: ["Ko'p regionli EKS", "Oddiy: bitta server/Compose yoki managed PaaS, keyin ehtiyojga qarab o'sish", "Mikroservislar", "Service mesh"]
+        answer: 1
+        why: "Ortiqcha murakkablik — xarajat va xavf."
+    hardcore:
+      - "Dizayningiz uchun SLO, oylik narx taxmini va 'yuklama 10x oshsa nima o'zgaradi' bo'limini qo'shing."
+
+  - key: jf-06-gate
+    kind: project
+    title: "JUNIOR GATE: retro, Middle rejasi va ariza"
+    theory: |
+      Tabriklaymiz — Junior yo'li yakunlandi! Gate mezonlari: 3 kuchli GitHub loyiha, K8s'dagi ishlaydigan ilova va uning monitoringi, intervyu savollarining katta qismiga ishonchli javob. Endi asosiy maktab — real ish: Middle darajasi production tajribasi bilan keladi. Bot keyingi bosqichda Middle modullarini (CKA, GitOps, Terraform chuqur...) ochadi.
+    task: |
+      1) RETRO-JUNIOR.md: 44 haftada nima o'rgandim, eng qiyin 5 mavzu, streak va takrorlash statistikasi (/progress), nima boshqacha qilardim.
+      2) Middle rejasi: birinchi 3 modul va sertifikat (SAA yoki CKA) sanasi.
+      3) Ariza rejasi: O'zbekiston (5 ta kompaniya), Saudiya va remote (5 tadan) — vakansiya havolalari va moslashtirilgan CV.
+      4) LinkedIn/Telegram'da "Junior yo'li yakunlandi" posti — natijalar, loyihalar, minnatdorchilik.
+    done: "Retro, Middle rejasi va birinchi arizalar yuborildi. Junior bosqichi tugadi! 🎓"
+    resources:
+      - {title: "roadmap.sh — DevOps", url: "https://roadmap.sh/devops"}
+      - {title: "milanm/DevOps-Roadmap", url: "https://github.com/milanm/DevOps-Roadmap"}
+    quiz:
+      - q: "Junior'dan Middle'ga o'tishning asosiy omili?"
+        options: ["Ko'proq kurs", "Real production tajribasi: on-call, incident'lar, haqiqiy jamoa bilan ishlash", "Ko'proq sertifikat", "Ko'proq vosita"]
+        answer: 1
+        why: "Kurs bilim beradi, tajriba esa ko'nikmani mustahkamlaydi."
+    hardcore:
+      - "Ochiq manbali DevOps loyihasiga (masalan Helm chart, Ansible rol yoki hujjat) birinchi PR'ingizni yuboring va merge qilinishigacha olib boring."

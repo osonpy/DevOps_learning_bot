@@ -1,0 +1,150 @@
+# J2 · Compose va production · 18-hafta (6 dars)
+lessons:
+  - key: compose-01-basics
+    title: "Docker Compose asoslari"
+    theory: |
+      Compose — ko'p konteynerli ilovani bitta YAML (compose.yaml) da tasvirlash: `services`, `networks`, `volumes`. `docker compose up -d`, `ps`, `logs -f svc`, `exec svc sh`, `down` (`-v` volume'larni ham o'chiradi — ehtiyot!).
+      Compose avtomatik loyiha networkini yaratadi — servislar bir-birini nom bilan topadi. `docker compose config` — yakuniy (birlashtirilgan, o'zgaruvchilar qo'yilgan) konfigni ko'rsatadi. Kubernetes'dan oldingi muhim qadam.
+    task: |
+      1) FastAPI + Postgres + adminer uchun compose.yaml yozing.
+      2) `up -d`, `ps`, `logs -f app`, `exec db psql -U ...`.
+      3) `docker compose config` chiqishini o'qing.
+      4) `down` va `down -v` farqini sinab ko'ring (test ma'lumot bilan!).
+    done: "Butun stack bitta buyruqda ko'tariladi va tushadi."
+    resources:
+      - {title: "Compose file reference", url: "https://docs.docker.com/reference/compose-file/"}
+      - {title: "Ultimate Docker Compose Tutorial (TechWorld with Nana)", url: "https://www.youtube.com/watch?v=SXwC9fSwct8"}
+    quiz:
+      - q: "`docker compose down -v` nimani o'chiradi?"
+        options: ["Faqat konteynerlarni", "Konteynerlar, network va named volume'lar (ma'lumotlar!)", "Image'larni", "Hech narsa"]
+        answer: 1
+        why: "Production'da -v juda xavfli."
+      - q: "Compose servislari bir-birini qanday topadi?"
+        options: ["IP orqali", "Servis nomi bilan (avtomatik network DNS)", "Port orqali", "Topa olmaydi"]
+        answer: 1
+        why: "Loyiha uchun user-defined network yaratiladi."
+    hardcore:
+      - "Compose'ni `docker compose watch` (develop.watch) bilan sozlang — kod o'zgarganda konteyner avtomatik yangilansin."
+
+  - key: compose-02-env
+    title: "env, .env, profiles va override fayllar"
+    theory: |
+      `.env` fayl — compose.yaml ichidagi `${VAR}` o'zgaruvchilari uchun; `env_file:` — konteyner ichiga env berish. Ikkisi har xil narsa! `${VAR:-default}`, `${VAR:?xato}`.
+      `profiles: [tools]` — faqat `--profile tools` bilan ishga tushadigan servislar (adminer, debug). Override: `compose.yaml` + `compose.override.yaml` (dev uchun avtomatik) yoki `-f compose.yaml -f compose.prod.yaml`.
+    task: |
+      1) Image tag va portni `.env` dagi o'zgaruvchilardan oling.
+      2) Ilova sirlarini `env_file: app.env` bilan bering (gitignore!).
+      3) adminer'ni `tools` profiliga o'tkazing.
+      4) `compose.prod.yaml` override: restart, limitlar; `docker compose -f ... -f ... config` bilan natijani ko'ring.
+    done: "Bir xil compose dev va prod'da turli sozlamalar bilan ishlaydi."
+    resources:
+      - {title: "Docker docs — Variable interpolation", url: "https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/"}
+      - {title: "Docker docs — Merge Compose files", url: "https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/"}
+    quiz:
+      - q: "Loyiha papkasidagi `.env` va servisdagi `env_file` farqi?"
+        options: ["Bir xil", ".env — compose.yaml interpolatsiyasi uchun; env_file — konteyner ichidagi env uchun", "env_file eskirgan", ".env konteynerga avtomatik tushadi"]
+        answer: 1
+        why: "Klassik chalkashlik manbai."
+      - q: "Servis faqat so'ralganda ishga tushishi uchun?"
+        options: ["depends_on", "profiles", "scale: 0", "restart: no"]
+        answer: 1
+        why: "`docker compose --profile tools up`."
+    hardcore:
+      - "Sirlarni Compose `secrets:` (fayl asosida) bilan bering va ilovada `/run/secrets/...` dan o'qing — env'dan farqini tushuntiring."
+
+  - key: compose-03-health
+    title: "Healthcheck va to'g'ri ishga tushish tartibi"
+    theory: |
+      `depends_on: [db]` faqat db konteyneri oldin START olishini kafolatlaydi, tayyorligini emas. Tayyorlik uchun: db'ga `healthcheck` (`pg_isready`) va ilovada `depends_on: {db: {condition: service_healthy}}`. Migratsiya uchun `condition: service_completed_successfully` (bir martalik migrate servisi).
+      Shunga qaramay ilova DB uzilishiga chidamli bo'lishi kerak (retry) — production'da DB ham qayta ishga tushadi.
+    task: |
+      1) db'ga pg_isready healthcheck, app'ga `service_healthy` sharti.
+      2) Alohida `migrate` servisi (alembic upgrade head) va app'ga `service_completed_successfully`.
+      3) `docker compose up -d --wait` — hammasi healthy bo'lguncha kutadi.
+      4) `docker compose stop db` qilib ilova xatti-harakatini ko'ring, qayta yoqing — ilova tiklanadimi?
+    done: "Stack to'g'ri tartibda ko'tariladi, ilova DB restartidan keyin o'zi tiklanadi."
+    resources:
+      - {title: "Docker docs — Control startup order", url: "https://docs.docker.com/compose/how-tos/startup-order/"}
+    quiz:
+      - q: "Shartsiz `depends_on` nimani kafolatlaydi?"
+        options: ["DB tayyorligini", "Faqat konteynerlarni ishga tushirish tartibini", "Ma'lumotlarni", "Hech narsani"]
+        answer: 1
+        why: "Tayyorlik uchun healthcheck + condition."
+      - q: "Bir martalik migratsiya tugashini kutish sharti?"
+        options: ["service_started", "service_completed_successfully", "service_healthy", "service_ready"]
+        answer: 1
+        why: "Exit 0 bilan tugagan servis."
+    hardcore:
+      - "Ilovaga DB ulanishini eksponensial retry bilan qiladigan startup logikasini qo'shing va compose'siz (`docker run`) ham to'g'ri ishlashini isbotlang."
+
+  - key: compose-04-prod
+    title: "Production sozlamalar"
+    theory: |
+      Production compose'da: `restart: unless-stopped`, resurs limitlari (`deploy.resources.limits`), log rotatsiyasi (`logging.options.max-size`), `read_only: true` + `tmpfs`, `cap_drop: [ALL]`, `security_opt: [no-new-privileges:true]`, DB porti publish qilinmagan, image aniq tag/digest bilan, faqat reverse proxy portlari ochiq.
+      Bitta VPS uchun Compose — to'liq yetarli va to'g'ri tanlov; Kubernetes'ga faqat haqiqiy ehtiyoj bo'lganda o'ting.
+    task: |
+      1) compose.prod.yaml'ga yuqoridagilarning hammasini qo'shing.
+      2) Nginx'ni ham compose'ga oling (yoki host'dagi nginx'ni ishlating) — faqat 80/443 publish.
+      3) `docker compose config` bilan yakuniy konfigni tekshiring.
+      4) Tashqaridan nmap — faqat 22/80/443.
+    done: "Production compose qattiqlashtirilgan, tashqaridan faqat kerakli portlar."
+    resources:
+      - {title: "Docker docs — Use Compose in production", url: "https://docs.docker.com/compose/how-tos/production/"}
+    quiz:
+      - q: "Production'da DB servisi uchun `ports: ['5432:5432']` muammosi?"
+        options: ["Yo'q", "DB internetga ochiladi (ufw'ni ham chetlab)", "Sekin", "Ishlamaydi"]
+        answer: 1
+        why: "Ichki network yetarli; debug uchun 127.0.0.1 bind."
+      - q: "Bitta VPS'dagi ilova uchun Kubernetes kerakmi?"
+        options: ["Har doim", "Ko'pincha yo'q — Compose oddiyroq va yetarli", "Majburiy", "Faqat Python uchun"]
+        answer: 1
+        why: "Murakkablik haqiqiy ehtiyojga mos bo'lsin."
+    hardcore:
+      - "Traefik'ni compose'da reverse proxy qilib, label'lar orqali avtomatik Let's Encrypt va servis marshrutlashni sozlang."
+
+  - key: compose-05-deploy
+    title: "Zero-downtime deploy va backup Compose bilan"
+    theory: |
+      Oddiy deploy: `docker compose pull && docker compose up -d` — konteyner almashtirilganda bir necha soniya uzilish. Kamaytirish: ilovaning 2 replikasi + reverse proxy, birma-bir yangilash; yoki blue-green (ikki stack, proxy almashtiradi).
+      Rollback: oldingi image tag'ini `.env` da qaytarib `up -d`. Backup: DB uchun `docker compose exec -T db pg_dump ... > file` + restic, cron/timer orqali.
+    task: |
+      1) `deploy.sh <tag>`: .env'da IMAGE_TAG'ni yangilab pull + up, keyin health tekshiruv; muvaffaqiyatsiz bo'lsa eski tag'ga qaytarsin.
+      2) Ataylab buzilgan tag bilan deploy qilib, avtomatik rollback'ni ko'ring.
+      3) pg_dump backup skripti + timer.
+      4) `hey` yuklamasi davomida deploy qilib, nechta xato bo'lganini o'lchang.
+    done: "Buzilgan deploy avtomatik qaytarildi."
+    resources:
+      - {title: "Docker docs — docker compose up", url: "https://docs.docker.com/reference/cli/docker/compose/up/"}
+    quiz:
+      - q: "Compose bilan eng oddiy rollback?"
+        options: ["Serverni reinstall", "Oldingi image tag'iga qaytib `up -d`", "Git revert", "Imkonsiz"]
+        answer: 1
+        why: "Shuning uchun aniq tag'lar muhim."
+      - q: "`docker compose exec -T` dagi -T nima uchun?"
+        options: ["Tezlik", "TTY ajratmaydi — natijani faylga to'g'ri yo'naltirish uchun", "Timeout", "Test"]
+        answer: 1
+        why: "Skript/cron'da TTY yo'q."
+    hardcore:
+      - "Haqiqiy zero-downtime: 2 replika + nginx upstream, birma-bir `--no-deps --scale` bilan almashtiruvchi skript va yuklama testida 0 xato."
+
+  - key: compose-06-project
+    kind: project
+    title: "LOYIHA: DevOps Quest botini Compose bilan Contabo'da"
+    theory: |
+      Modul yakuni — o'qiyotgan botingizning o'zi! Postgres va botni production compose bilan Contabo VPS'ga joylaysiz. Shu kundan boshlab bot sizning serveringizdagi haqiqiy production servis bo'ladi va keyingi modullarda unga CI/CD, monitoring va Kubernetes qo'shasiz.
+    task: |
+      1) Bot repo'si (README, .env.example, pre-commit) GitHub'da.
+      2) Image GHCR'da; compose.prod.yaml: healthcheck, limitlar, log rotation, read_only, cap_drop, DB porti yopiq.
+      3) VPS'da `deploy.sh <tag>` bilan ishga tushiring.
+      4) Kunlik pg_dump + restic backup va tiklash testi.
+      5) Botdan /progress chaqirib ishlayotganini tasdiqlang.
+    done: "Bot Contabo'da 24/7 ishlaydi va sizga eslatma yuboradi."
+    resources:
+      - {title: "GfG — Docker Compose", url: "https://www.geeksforgeeks.org/devops/docker-compose/"}
+    quiz:
+      - q: "Bot DB'si uchun backup qaysi joyda bo'lmasligi kerak (yagona nusxa sifatida)?"
+        options: ["Boshqa server", "Aynan shu VPS diskida", "Cloud storage", "Lokal kompyuter"]
+        answer: 1
+        why: "Server yo'qolsa backup ham yo'qoladi — 3-2-1."
+    hardcore:
+      - "Botga `/health` HTTP endpoint (aiohttp) qo'shib, Docker healthcheck'ni polling holatiga (oxirgi update vaqti) bog'lang — bot 'osilib' qolsa unhealthy bo'lsin."

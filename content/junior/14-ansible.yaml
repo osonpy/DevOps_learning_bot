@@ -1,0 +1,308 @@
+# J3 · Ansible · 25–26-hafta (12 dars)
+lessons:
+  - key: ans-01-intro
+    title: "Configuration management va Ansible arxitekturasi"
+    theory: |
+      Configuration management — serverlar holatini kod bilan tasvirlash va bir xil qilib turish. Ansible: agentsiz (faqat SSH va Python), push model, deklarativ YAML. Control node (siz) → inventory (qaysi serverlar) → playbook (nima qilish) → modullar (apt, copy, service...).
+      J1'dagi bootstrap bash skriptlaringizni eslang: idempotentlikni o'zingiz yozgansiz. Ansible modullari buni tayyor beradi va `changed/ok` hisobotini chiqaradi.
+    task: |
+      1) `pipx install ansible-core` (yoki `ansible`), `ansible --version`.
+      2) `inventory.ini`: `[web]` guruhida VPS'ingiz (va lokal VM bo'lsa u ham).
+      3) `ansible all -i inventory.ini -m ping`.
+      4) `ansible-config dump --only-changed` va `ansible.cfg` yarating (inventory, remote_user).
+    done: "`ansible all -m ping` barcha hostlardan pong qaytaradi."
+    resources:
+      - {title: "Ansible — Getting started", url: "https://docs.ansible.com/ansible/latest/getting_started/index.html"}
+      - {title: "milanm — Infrastructure as Code (Ansible)", url: "https://github.com/milanm/DevOps-Roadmap#8-learn-infrastructure-as-a-code-x-as-code"}
+    quiz:
+      - q: "Ansible'ning 'agentsiz' bo'lishi nimani bildiradi?"
+        options: ["Ishlamaydi", "Boshqariladigan serverlarga maxsus dastur o'rnatish shart emas — SSH va Python yetarli", "Faqat lokal", "Cloud kerak"]
+        answer: 1
+        why: "Chef/Puppet'dan farqli."
+      - q: "Inventory nima?"
+        options: ["Paketlar ro'yxati", "Boshqariladigan hostlar va guruhlar ro'yxati", "Loglar", "Playbook"]
+        answer: 1
+        why: "Statik fayl yoki dinamik (cloud API)."
+    hardcore:
+      - "YAML formatidagi inventory yozing (guruhlar ichida guruhlar, host o'zgaruvchilari) va `ansible-inventory --graph` bilan ko'rsating."
+
+  - key: ans-02-adhoc
+    title: "Ad-hoc buyruqlar va modullar"
+    theory: |
+      Ad-hoc — bir martalik buyruq: `ansible web -m apt -a "name=htop state=present" -b` (`-b` = become/sudo). Modullar: `ping`, `command`/`shell` (oxirgi chora), `apt`, `copy`, `file`, `service`/`systemd`, `user`, `lineinfile`, `get_url`. `ansible-doc apt` — hujjat.
+      `command` va `shell` idempotent emas — iloji bo'lsa maxsus modulni ishlating. `--check` (dry-run) va `--diff`.
+    task: |
+      1) Barcha hostlarda uptime: `ansible all -a uptime`.
+      2) htop o'rnating, 2-marta ishga tushiring — `changed` va `ok` farqi.
+      3) `lineinfile` bilan /etc/motd ga qator qo'shing, `--check --diff` bilan oldin ko'ring.
+      4) `ansible-doc -l | wc -l` — nechta modul bor.
+    done: "2-ishga tushirishda `changed=0`."
+    resources:
+      - {title: "Ansible — Introduction to ad hoc commands", url: "https://docs.ansible.com/ansible/latest/command_guide/intro_adhoc.html"}
+    quiz:
+      - q: "Nima uchun `shell` modulidan iloji boricha qochish kerak?"
+        options: ["Sekin", "Idempotent emas va `changed` holatini to'g'ri bilmaydi", "Xavfsiz emas faqat", "Eskirgan"]
+        answer: 1
+        why: "Maxsus modullar holatni tekshiradi."
+      - q: "`-b` flagi?"
+        options: ["Background", "become — sudo bilan bajarish", "Batch", "Backup"]
+        answer: 1
+        why: "Root talab qiladigan amallar uchun."
+    hardcore:
+      - "`setup` modulidan barcha hostlarning OS, RAM va disk ma'lumotlarini olib, jq bilan jadval qiling."
+
+  - key: ans-03-playbook
+    title: "Birinchi playbook: tasks va handlers"
+    theory: |
+      Playbook — play'lar ro'yxati: `hosts`, `become`, `tasks`. Har task — nom + modul. Handlers — faqat o'zgarish bo'lganda (`notify`) va play oxirida bir marta ishlaydi: masalan nginx konfigi o'zgarsa reload.
+      `ansible-playbook site.yml --check --diff`, `--limit host`, `--tags`, `-v`. Natija: ok/changed/failed/skipped.
+    task: |
+      1) `nginx.yml`: nginx o'rnatish, konfig fayl (`copy`), servis enabled+started.
+      2) Konfig o'zgarganda `notify: reload nginx` handler.
+      3) 2-marta ishga tushiring — handler ishlamasligini ko'ring.
+      4) Konfigni o'zgartirib qayta — faqat shunda reload.
+    done: "Handler faqat konfig o'zgarganda ishlaydi."
+    resources:
+      - {title: "Ansible — Intro to playbooks", url: "https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_intro.html"}
+    quiz:
+      - q: "Handler qachon ishlaydi?"
+        options: ["Har doim", "Unga notify qilgan task 'changed' bo'lganda, play oxirida bir marta", "Xatoda", "Boshida"]
+        answer: 1
+        why: "Keraksiz restart'lar bo'lmaydi."
+      - q: "Playbook'ni hech narsani o'zgartirmasdan sinash?"
+        options: ["--limit", "--check --diff", "--tags", "-v"]
+        answer: 1
+        why: "Dry-run va farqlar."
+    hardcore:
+      - "Handler'ni `listen:` bilan bir nechta task'lardan bitta umumiy nom orqali chaqiriladigan qiling va `meta: flush_handlers` ning ta'sirini ko'rsating."
+
+  - key: ans-04-vars
+    title: "O'zgaruvchilar, facts, group_vars va host_vars"
+    theory: |
+      O'zgaruvchilar manbalari: playbook `vars`, `group_vars/web.yml`, `host_vars/vps1.yml`, `-e` (eng yuqori ustuvorlik), facts (`ansible_distribution`, `ansible_memtotal_mb` — avtomatik yig'iladi). Ustuvorlik tartibini bilish — xatolarning oldini oladi.
+      `register` — task natijasini o'zgaruvchiga olish; `debug: var=...`. Jinja2 ifodalar `{{ }}`, filtrlar (`default`, `lower`, `to_json`).
+    task: |
+      1) group_vars/all.yml: deploy_user, timezone; host_vars'da host'ga xos qiymat.
+      2) Facts'dan RAM'ga qarab swap hajmini tanlang.
+      3) `register` + `debug` bilan buyruq natijasini chiqaring.
+      4) Bir o'zgaruvchini 3 joyda belgilab, qaysi biri g'olib bo'lishini sinang.
+    done: "O'zgaruvchilar ustuvorligini misol bilan tushuntira olasiz."
+    resources:
+      - {title: "Ansible — Using variables", url: "https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html"}
+    quiz:
+      - q: "Eng yuqori ustuvorlikka ega o'zgaruvchi manbai?"
+        options: ["group_vars/all", "-e (extra vars)", "role defaults", "facts"]
+        answer: 1
+        why: "Buyruq qatoridan berilgan extra vars hammasini bosadi."
+      - q: "Facts nima?"
+        options: ["Siz yozgan o'zgaruvchilar", "Host haqida avtomatik yig'iladigan ma'lumotlar (OS, IP, RAM)", "Loglar", "Sirlar"]
+        answer: 1
+        why: "`gather_facts: true` (default)."
+    hardcore:
+      - "Facts keshlashni (jsonfile) yoqing va katta inventory'da playbook vaqti qanchaga qisqarishini o'lchang."
+
+  - key: ans-05-templates
+    title: "Templates, loops va conditionals"
+    theory: |
+      `template` modul — Jinja2 shablon (.j2) dan fayl: nginx server block, systemd unit, .env. Python for Ops'da Jinja2'ni o'rgangansiz — bu o'sha. Loops: `loop: "{{ users }}"`, dict'lar ustida `dict2items`. Shartlar: `when: ansible_distribution == "Ubuntu"`.
+      `validate:` parametri — fayl yozilishidan oldin tekshirish (`nginx -t -c %s`, `visudo -cf %s`) — buzilgan konfig serverga tushmaydi.
+    task: |
+      1) `sites` ro'yxatidan (domen, port) nginx server block'larni template bilan generatsiya qiling.
+      2) users ro'yxati bilan loop: user + SSH kalit.
+      3) sudoers fayliga `validate: visudo -cf %s`.
+      4) Ataylab buzilgan shablon bilan validate'ning to'xtatishini ko'ring.
+    done: "Buzilgan konfig validate tufayli serverga tushmadi."
+    resources:
+      - {title: "Ansible — Templating (Jinja2)", url: "https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_templating.html"}
+    quiz:
+      - q: "`validate:` parametrining foydasi?"
+        options: ["Tezlik", "Yangi fayl yozilishidan oldin tekshiradi — xato bo'lsa eski fayl qoladi", "Shifrlaydi", "Log yozadi"]
+        answer: 1
+        why: "sudoers buzilsa root huquqini yo'qotish mumkin."
+      - q: "Task faqat Ubuntu'da ishlashi uchun?"
+        options: ["tags:", "when: ansible_distribution == 'Ubuntu'", "hosts: ubuntu", "loop:"]
+        answer: 1
+        why: "Facts asosidagi shart."
+    hardcore:
+      - "J1'dagi nginx Jinja2 generatoringizni Ansible template'ga ko'chiring va ikkala natija bayt-bayt bir xil ekanini diff bilan isbotlang."
+
+  - key: ans-06-lab
+    kind: lab
+    title: "LAB: idempotent bo'lmagan playbookni tuzatish"
+    theory: |
+      Yomon playbook belgilari: har ishga tushirishda `changed`, `shell: echo ... >> file` (qatorlar ko'payadi), `command: apt-get install` (modul o'rniga), har safar servis restart. Tekshirish usuli: 2-marta ishga tushirish `changed=0` bo'lishi kerak.
+      Tuzatish: maxsus modullar, `creates:`/`removes:` parametrlari, `changed_when:`, `lineinfile`/`blockinfile`.
+    task: |
+      Quyidagi tasklarni playbook qilib yozing va idempotent qilib tuzating:
+          - shell: echo "vm.swappiness=10" >> /etc/sysctl.conf
+          - command: apt-get install -y htop
+          - shell: useradd deploy
+          - command: systemctl restart nginx
+          - shell: curl -o /usr/local/bin/tool https://example.com/tool
+      1) 2-marta ishga tushirib muammolarni ko'ring.
+      2) Har birini to'g'ri modul bilan qayta yozing.
+      3) Yakunda 2-ishga tushirish `changed=0`.
+    done: "Tuzatilgan playbook 2-marta changed=0."
+    resources:
+      - {title: "Ansible — Tips and tricks", url: "https://docs.ansible.com/ansible/latest/tips_tricks/ansible_tips_tricks.html"}
+    quiz:
+      - q: "`command:` task'ini idempotent qilishning bir usuli?"
+        options: ["ignore_errors", "`creates:` parametri — fayl mavjud bo'lsa o'tkazib yuboradi", "become", "loop"]
+        answer: 1
+        why: "Yoki changed_when bilan aniq holat."
+      - q: "Playbook idempotentligini qanday tekshirasiz?"
+        options: ["Bir marta ishga tushirib", "Ikkinchi marta ishga tushirganda changed=0", "Loglarni o'qib", "Tekshirib bo'lmaydi"]
+        answer: 1
+        why: "Molecule ham aynan shuni tekshiradi."
+    hardcore:
+      - "`ansible-lint` ni ishga tushirib, barcha ogohlantirishlarni tuzating va qaysilari idempotentlik bilan bog'liqligini belgilang."
+
+  - key: ans-07-roles
+    title: "Roles va loyiha strukturasi"
+    theory: |
+      Role — qayta ishlatiladigan birlik: `roles/nginx/{tasks,handlers,templates,files,defaults,vars,meta}/`. `defaults/main.yml` — eng past ustuvorlikdagi, almashtirish mumkin bo'lgan qiymatlar. `ansible-galaxy init roles/nginx` skelet yaratadi.
+      Loyiha: `site.yml` (hamma), `inventories/{staging,production}/`, `roles/`, `requirements.yml` (tashqi rollar/collection'lar). Galaxy'dan tayyor rollar (geerlingguy.docker) — yozishdan oldin qidiring.
+    task: |
+      1) Rollar: `base` (user, ssh, ufw, fail2ban), `docker`, `nginx`.
+      2) `site.yml` ularni tartib bilan chaqirsin.
+      3) staging va production inventory'lari.
+      4) `requirements.yml` bilan bitta Galaxy collection o'rnating (`community.general`).
+    done: "site.yml uch rol bilan serverni to'liq sozlaydi."
+    resources:
+      - {title: "Ansible — Roles", url: "https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_reuse_roles.html"}
+      - {title: "Ansible Galaxy", url: "https://galaxy.ansible.com/"}
+    quiz:
+      - q: "Role'ning `defaults/` va `vars/` farqi?"
+        options: ["Bir xil", "defaults — eng past ustuvorlik (osongina almashtiriladi); vars — yuqori", "vars faqat sirlar", "defaults eskirgan"]
+        answer: 1
+        why: "Foydalanuvchi sozlaydigan qiymatlar defaults'da."
+      - q: "Yangi role skeletini yaratish?"
+        options: ["mkdir", "ansible-galaxy init", "ansible-role new", "ansible create"]
+        answer: 1
+        why: "Standart papka tuzilmasi."
+    hardcore:
+      - "`base` rolini parametrlang (ufw portlari, qo'shimcha userlar) va bitta repo'da ikki xil konfiguratsiyali serverga ishlating."
+
+  - key: ans-08-vault
+    title: "Ansible Vault — sirlar"
+    theory: |
+      Sirlar (bot token, DB parol) Git'da ochiq saqlanmaydi. `ansible-vault create/edit/encrypt secrets.yml`, `encrypt_string` (bitta qiymat). Ishga tushirish: `--ask-vault-pass` yoki `--vault-password-file` (CI'da secret'dan). `no_log: true` — sir chiqadigan task loglari yashiriladi.
+      Muqobillar: tashqi sir menejerlari (AWS Secrets Manager, HashiCorp Vault) — Middle bosqichida.
+    task: |
+      1) `group_vars/production/vault.yml` ni shifrlang (bot token, DB parol).
+      2) `vars.yml` da `bot_token: "{{ vault_bot_token }}"` naqshi.
+      3) Template bilan serverga `.env` (600) yozing, `no_log: true`.
+      4) Shifrlangan fayl Git'da qanday ko'rinishini tekshiring.
+    done: "Sirlar Git'da faqat shifrlangan holda."
+    resources:
+      - {title: "Ansible — Protecting sensitive data with Vault", url: "https://docs.ansible.com/ansible/latest/vault_guide/index.html"}
+    quiz:
+      - q: "Sir chiqadigan task logini yashirish?"
+        options: ["quiet: true", "no_log: true", "hide: yes", "-q"]
+        answer: 1
+        why: "Aks holda -v rejimida sir loglarga tushadi."
+      - q: "`vault_` prefiks naqshining foydasi?"
+        options: ["Majburiy", "O'zgaruvchi qayerda aniqlanganini topish oson, shifrlangan fayl ichini ochmasdan", "Tezlik", "Farqi yo'q"]
+        answer: 1
+        why: "Ochiq vars → vault vars havolasi."
+    hardcore:
+      - "Ikki vault ID (staging va production) bilan ishlang: har muhit o'z parolida, bitta playbook ikkalasini ham to'g'ri ochsin."
+
+  - key: ans-09-docker
+    title: "Docker va Compose deploy'ni Ansible bilan"
+    theory: |
+      `community.docker` collection: `docker_container`, `docker_compose_v2` (compose loyihasini boshqarish), `docker_login`, `docker_image`. Ansible serverni tayyorlaydi (Docker o'rnatish, user, papkalar, .env), so'ng compose stack'ni deploy qiladi.
+      Bu J2'dagi deploy.sh'ning deklarativ versiyasi: holat tasvirlanadi, Ansible farqni qo'llaydi.
+    task: |
+      1) `docker` roli: rasmiy repo, paketlar, daemon.json (log rotation), deploy user guruhga.
+      2) `bot` roli: /srv/bot papka, compose.yaml (template), .env (vault'dan), `docker_compose_v2` bilan up.
+      3) image_tag o'zgaruvchisi bilan yangi versiyani deploy qiling.
+      4) 2-marta ishga tushirish changed=0.
+    done: "Bot butunlay Ansible orqali deploy bo'ladi."
+    resources:
+      - {title: "community.docker collection", url: "https://docs.ansible.com/ansible/latest/collections/community/docker/index.html"}
+    quiz:
+      - q: "Ansible va Compose'ning vazifalari bu yerda qanday bo'linadi?"
+        options: ["Bir xil", "Ansible — server va konfig holati; Compose — konteynerlar stack'i", "Compose Ansible'ni almashtiradi", "Ansible konteyner ichida"]
+        answer: 1
+        why: "Har vosita o'z qatlamida."
+      - q: "Docker'ni Ansible bilan o'rnatishda nimaga e'tibor berish kerak?"
+        options: ["Hech narsa", "Rasmiy repo, GPG kalit va daemon.json konfiguratsiyasi idempotent bo'lishi", "Faqat apt install docker.io", "Snap orqali"]
+        answer: 1
+        why: "Takrorlanuvchan va xavfsiz o'rnatish."
+    hardcore:
+      - "Ansible bilan rolling deploy: ikki hostli inventory'da `serial: 1` bilan birma-bir deploy qilib, har biridan keyin health tekshiring va xato bo'lsa to'xtating."
+
+  - key: ans-10-testing
+    title: "ansible-lint va Molecule bilan test"
+    theory: |
+      ansible-lint — eng yaxshi amaliyotlar va xatolar (FQCN modul nomlari, idempotentlik, no_log). Molecule — rolni toza konteynerda (Docker driver) test qilish: create → converge → idempotence → verify → destroy. Idempotence bosqichi 2-ishga tushirishda o'zgarish bo'lsa yiqiladi.
+      Testlangan rol — CI'da avtomatik tekshiriladi va ishonch bilan qayta ishlatiladi.
+    task: |
+      1) `ansible-lint` toza holatga keltiring.
+      2) `base` roli uchun Molecule (docker driver, ubuntu image).
+      3) `molecule test` — idempotence bosqichi o'tsin.
+      4) verify bosqichida ufw va fail2ban holatini tekshiring.
+    done: "molecule test to'liq yashil."
+    resources:
+      - {title: "Ansible Lint docs", url: "https://ansible.readthedocs.io/projects/lint/"}
+      - {title: "Molecule docs", url: "https://ansible.readthedocs.io/projects/molecule/"}
+    quiz:
+      - q: "Molecule'ning idempotence bosqichi nimani tekshiradi?"
+        options: ["Tezlik", "Rol ikkinchi marta ishga tushirilganda hech narsa o'zgarmasligini", "Sintaksis", "Xavfsizlik"]
+        answer: 1
+        why: "changed bo'lsa — test yiqiladi."
+      - q: "FQCN nima (ansible-lint talabi)?"
+        options: ["Fayl formati", "Modulning to'liq nomi: ansible.builtin.copy", "Konfig", "Inventory turi"]
+        answer: 1
+        why: "Collection'lar orasidagi noaniqlikning oldini oladi."
+    hardcore:
+      - "Molecule'ni ikki platformada (Ubuntu 24.04 va Debian 12) ishga tushiring va rolni ikkalasida ham ishlaydigan qiling."
+
+  - key: ans-11-ci
+    title: "Ansible'ni CI'dan ishga tushirish"
+    theory: |
+      GitOps-ga yaqin oqim: playbook o'zgarishi PR → CI'da ansible-lint + molecule + `--check --diff` (staging'ga) → merge → `ansible-playbook` (production, tasdiqlash bilan). Kerak: SSH kalit, known_hosts va vault paroli secret sifatida.
+      Natija: serverlarga qo'lda o'zgarish kiritilmaydi; hamma narsa Git tarixida va review'dan o'tgan.
+    task: |
+      1) `ansible.yml` workflow: PR'da lint + molecule.
+      2) PR'da staging'ga `--check --diff` va natijani PR izohiga yozish (ixtiyoriy).
+      3) main'da production environment (tasdiqlash) bilan haqiqiy apply.
+      4) Vault paroli va SSH kalitni secret'dan fayl qilib, job oxirida o'chiring.
+    done: "Server konfiguratsiyasi faqat PR orqali o'zgaradi."
+    resources:
+      - {title: "Ansible — Best practices (CI/CD)", url: "https://docs.ansible.com/ansible/latest/tips_tricks/ansible_tips_tricks.html"}
+    quiz:
+      - q: "CI'da playbook'ni production'ga qo'llashdan oldin xavfsiz qadam?"
+        options: ["Hech narsa", "`--check --diff` bilan nima o'zgarishini ko'rish", "Serverni reboot", "Lint o'chirish"]
+        answer: 1
+        why: "Terraform plan'ning Ansible analogi."
+      - q: "Qo'lda server o'zgarishlari (drift) nima uchun yomon?"
+        options: ["Yomon emas", "Kod va haqiqiy holat farqlanadi — keyingi apply kutilmagan natija beradi", "Tezroq", "Arzonroq"]
+        answer: 1
+        why: "Yagona haqiqat manbai — Git."
+    hardcore:
+      - "Har kecha `--check` rejimida ishlab, drift (kutilmagan o'zgarish) topilsa Telegram'ga xabar beradigan rejalashtirilgan workflow yozing."
+
+  - key: ans-12-project
+    kind: project
+    title: "LOYIHA: VPS'ni Ansible bilan noldan"
+    theory: |
+      Modul yakuni: J1'dagi bash bootstrap'ni to'liq Ansible'ga ko'chirasiz. Toza serverdan ishlayotgan botgacha — bitta `ansible-playbook site.yml`. Bu J1 gate vaqtingizni bir necha barobar qisqartiradi.
+    task: |
+      1) Rollar: base, security, docker, nginx (TLS bilan), bot, backup.
+      2) Vault bilan sirlar; staging va production inventory.
+      3) Molecule testlari kamida 2 rol uchun; ansible-lint toza.
+      4) CI: PR'da tekshiruv, main'da apply.
+      5) Toza VM'da `site.yml` — vaqtni o'lchang va J1 gate vaqti bilan solishtiring.
+    done: "Toza serverdan ishlayotgan botgacha bitta buyruq, vaqt README'da."
+    resources:
+      - {title: "GfG — Ansible tutorial", url: "https://www.geeksforgeeks.org/devops/ansible-tutorial/"}
+      - {title: "geerlingguy — Ansible for DevOps (examples)", url: "https://github.com/geerlingguy/ansible-for-devops"}
+    quiz:
+      - q: "Bash bootstrap'dan Ansible'ga o'tishning asosiy foydasi?"
+        options: ["Tezroq yoziladi", "Tayyor idempotent modullar, holat hisoboti, ko'p server va test qilish oson", "Bash yomon", "Majburiy"]
+        answer: 1
+        why: "Masshtab va ishonchlilik."
+    hardcore:
+      - "Inventory'ni dinamik qiling: Contabo yoki AWS API'dan serverlar ro'yxatini oladigan inventory plugin/skript."

@@ -1,0 +1,53 @@
+# DevOps Quest — barcha modullar tartib bilan.
+# file: bo'lsa — darslar shu faylda; bo'lmasa — modul "keyinroq" (roadmap'da qulf bilan ko'rinadi).
+# Darslar ketma-ket raqamlanadi, har 6 dars = 1 hafta (Du-Sh), Yakshanba — takrorlash.
+
+modules:
+  # ═══════════ JUNIOR · J1 POYDEVOR (1–14-hafta) ═══════════
+  - {slug: linux-basics,  level: junior, stage: J1, stage_title: "Poydevor", emoji: "🐧", title: "Linux asoslari",            file: junior/01-linux-basics.yaml}
+  - {slug: bash,          level: junior, stage: J1, stage_title: "Poydevor", emoji: "🐚", title: "Bash scripting",            file: junior/02-bash.yaml}
+  - {slug: network,       level: junior, stage: J1, stage_title: "Poydevor", emoji: "🌐", title: "Tarmoq",                    file: junior/03-network.yaml}
+  - {slug: git,           level: junior, stage: J1, stage_title: "Poydevor", emoji: "🌿", title: "Git, GitHub, GitLab",       file: junior/04-git.yaml}
+  - {slug: nginx-security,level: junior, stage: J1, stage_title: "Poydevor", emoji: "🛡", title: "Nginx va server xavfsizligi",file: junior/05-nginx-security.yaml}
+  - {slug: python-ops,    level: junior, stage: J1, stage_title: "Poydevor", emoji: "🐍", title: "Python for Ops",            file: junior/06-python-ops.yaml}
+  - {slug: j1-project,    level: junior, stage: J1, stage_title: "Poydevor", emoji: "🏁", title: "J1 loyihasi: production-ready VPS", file: junior/07-j1-project.yaml}
+
+  # ═══════════ JUNIOR · J2 KONTEYNER VA CI/CD (15–24-hafta) ═══════════
+  - {slug: docker,        level: junior, stage: J2, stage_title: "Konteyner va CI/CD", emoji: "🐳", title: "Docker chuqur",          file: junior/08-docker.yaml}
+  - {slug: compose,       level: junior, stage: J2, stage_title: "Konteyner va CI/CD", emoji: "🧩", title: "Compose va production", file: junior/09-compose.yaml}
+  - {slug: github-actions,level: junior, stage: J2, stage_title: "Konteyner va CI/CD", emoji: "⚙️", title: "GitHub Actions",         file: junior/10-github-actions.yaml}
+  - {slug: gitlab-ci,     level: junior, stage: J2, stage_title: "Konteyner va CI/CD", emoji: "🦊", title: "GitLab CI",              file: junior/11-gitlab-ci.yaml}
+  - {slug: devsecops,     level: junior, stage: J2, stage_title: "Konteyner va CI/CD", emoji: "🔐", title: "DevSecOps asoslari",     file: junior/12-devsecops.yaml}
+  - {slug: j2-project,    level: junior, stage: J2, stage_title: "Konteyner va CI/CD", emoji: "🏁", title: "J2 loyihasi: to'liq delivery pipeline", file: junior/13-j2-project.yaml}
+
+  # ═══════════ JUNIOR · J3 IaC VA CLOUD (25–35-hafta) ═══════════
+  - {slug: ansible,       level: junior, stage: J3, stage_title: "IaC va Cloud", emoji: "🅰️", title: "Ansible",       file: junior/14-ansible.yaml}
+  - {slug: aws,           level: junior, stage: J3, stage_title: "IaC va Cloud", emoji: "☁️", title: "AWS asoslari",  file: junior/15-aws.yaml}
+  - {slug: terraform,     level: junior, stage: J3, stage_title: "IaC va Cloud", emoji: "🏗", title: "Terraform",     file: junior/16-terraform.yaml}
+  - {slug: j3-project,    level: junior, stage: J3, stage_title: "IaC va Cloud", emoji: "🏁", title: "J3 loyihasi: kod bilan butun muhit", file: junior/17-j3-project.yaml}
+
+  # ═══════════ JUNIOR · J4 KUBERNETES VA MONITORING (36–44-hafta) ═══════════
+  - {slug: kubernetes,    level: junior, stage: J4, stage_title: "Kubernetes va Monitoring", emoji: "☸️", title: "Kubernetes asoslari", file: junior/18-kubernetes.yaml}
+  - {slug: helm,          level: junior, stage: J4, stage_title: "Kubernetes va Monitoring", emoji: "⛵", title: "Helm",                file: junior/19-helm.yaml}
+  - {slug: monitoring,    level: junior, stage: J4, stage_title: "Kubernetes va Monitoring", emoji: "📈", title: "Monitoring va loglar", file: junior/20-monitoring.yaml}
+  - {slug: junior-final,  level: junior, stage: J4, stage_title: "Kubernetes va Monitoring", emoji: "🎓", title: "Junior yakuniy: portfolio va intervyu", file: junior/21-junior-final.yaml}
+
+  # ═══════════ MIDDLE (kontent Junior tugagach qo'shiladi) ═══════════
+  - {slug: m-linux-perf,  level: middle, stage: M1, stage_title: "Platforma",   emoji: "🔬", title: "Linux ichki tuzilishi va performance"}
+  - {slug: m-k8s-admin,   level: middle, stage: M1, stage_title: "Platforma",   emoji: "☸️", title: "Kubernetes administratsiyasi (CKA)"}
+  - {slug: m-gitops,      level: middle, stage: M1, stage_title: "Platforma",   emoji: "🔄", title: "GitOps va progressive delivery"}
+  - {slug: m-terraform,   level: middle, stage: M2, stage_title: "Cloud va IaC", emoji: "🏗", title: "Terraform chuqur"}
+  - {slug: m-aws,         level: middle, stage: M2, stage_title: "Cloud va IaC", emoji: "☁️", title: "AWS production"}
+  - {slug: m-azure,       level: middle, stage: M2, stage_title: "Cloud va IaC", emoji: "🔷", title: "Azure asoslari (ixtiyoriy)"}
+  - {slug: m-observability,level: middle, stage: M3, stage_title: "Ishonchlilik", emoji: "📈", title: "Observability chuqur"}
+  - {slug: m-security,    level: middle, stage: M3, stage_title: "Ishonchlilik", emoji: "🔐", title: "Xavfsizlik: Vault, policy"}
+  - {slug: m-databases,   level: middle, stage: M3, stage_title: "Ishonchlilik", emoji: "🗄", title: "Ma'lumotlar bazasi operatsiyalari"}
+  - {slug: m-go,          level: middle, stage: M3, stage_title: "Ishonchlilik", emoji: "🐹", title: "Go for DevOps"}
+
+  # ═══════════ SENIOR ═══════════
+  - {slug: s-sre,         level: senior, stage: S1, stage_title: "SRE va arxitektura", emoji: "🚨", title: "SRE amaliyoti"}
+  - {slug: s-architecture,level: senior, stage: S1, stage_title: "SRE va arxitektura", emoji: "🏛", title: "Arxitektura va ishonchlilik"}
+  - {slug: s-platform,    level: senior, stage: S2, stage_title: "Platforma va biznes", emoji: "🧱", title: "Platform engineering"}
+  - {slug: s-supply-chain,level: senior, stage: S2, stage_title: "Platforma va biznes", emoji: "🔏", title: "Supply chain xavfsizligi"}
+  - {slug: s-finops,      level: senior, stage: S2, stage_title: "Platforma va biznes", emoji: "💰", title: "FinOps"}
+  - {slug: s-leadership,  level: senior, stage: S2, stage_title: "Platforma va biznes", emoji: "🧭", title: "Liderlik"}

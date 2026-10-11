@@ -1,0 +1,309 @@
+# J1 · Nginx va server xavfsizligi · 11–12-hafta (12 dars)
+lessons:
+  - key: nginx-01-basics
+    title: "Nginx: o'rnatish, konfig tuzilishi, statik sayt"
+    theory: |
+      Nginx — web server va reverse proxy. Konfig: /etc/nginx/nginx.conf (asosiy), /etc/nginx/sites-available/ + sites-enabled/ (symlink) yoki conf.d/. Tuzilma: `http { server { listen 80; server_name example.com; location / { ... } } }`.
+      Har o'zgarishdan keyin: `nginx -t` (sintaksis), `systemctl reload nginx` (ulanishlarni uzmasdan). Master jarayon root'da, worker'lar www-data'da ishlaydi.
+    task: |
+      1) `apt install nginx`, `systemctl status nginx`, brauzerda IP'ni oching.
+      2) `/var/www/devops/index.html` va `sites-available/devops` server block yarating, symlink, default'ni o'chiring.
+      3) `nginx -t && systemctl reload nginx`.
+      4) `ps aux | grep nginx` — master va worker'lar user'ini ko'ring.
+    done: "O'z sahifangiz IP orqali ochiladi."
+    resources:
+      - {title: "nginx — Beginner's Guide", url: "https://nginx.org/en/docs/beginners_guide.html"}
+      - {title: "The NGINX Handbook (freeCodeCamp)", url: "https://www.freecodecamp.org/news/the-nginx-handbook/"}
+    quiz:
+      - q: "Konfigni xavfsiz qo'llashning to'g'ri tartibi?"
+        options: ["systemctl restart nginx", "nginx -t && systemctl reload nginx", "kill -9", "reboot"]
+        answer: 1
+        why: "-t sintaksisni tekshiradi, reload ulanishlarni uzmaydi."
+      - q: "sites-enabled ichida odatda nima bo'ladi?"
+        options: ["Haqiqiy fayllar", "sites-available'dagi fayllarga symlink", "Loglar", "Sertifikatlar"]
+        answer: 1
+        why: "Saytni yoqish/o'chirish = symlink qo'shish/olib tashlash."
+    hardcore:
+      - "Bitta Nginx'da 2 ta server block (ikki xil domen yoki sslip.io nomi) bilan ikkita sayt xizmat qiling va `curl -H 'Host: ...'` bilan har birini tekshiring."
+
+  - key: nginx-02-locations
+    title: "location, try_files va loglar"
+    theory: |
+      location turlari: prefix `location /static/`, aniq `location = /health`, regex `location ~* \.(png|css)$`. Ustuvorlik: `=` → `^~` → regex → eng uzun prefix. `root` va `alias` farqi — klassik xato manbai. `try_files $uri $uri/ /index.html` — SPA uchun.
+      Loglar: /var/log/nginx/access.log va error.log; `log_format` bilan javob vaqtini (`$request_time`, `$upstream_response_time`) qo'shing — performance tahlili uchun juda foydali.
+    task: |
+      1) `/static/` uchun alias, `/health` uchun `return 200 "ok"`.
+      2) root va alias bilan bir xil yo'lni sinab, farqini 404 orqali ko'ring.
+      3) log_format'ga `$request_time` va `$upstream_response_time` qo'shing.
+      4) `tail -f access.log` qilib so'rovlarni kuzating, awk bilan o'rtacha vaqtni hisoblang.
+    done: "root/alias farqini 404 misolida tushuntira olasiz."
+    resources:
+      - {title: "nginx docs — location", url: "https://nginx.org/en/docs/http/ngx_http_core_module.html#location"}
+    quiz:
+      - q: "`location /img/ { alias /data/pics/; }` — `/img/a.png` qaysi faylni beradi?"
+        options: ["/data/pics/img/a.png", "/data/pics/a.png", "/img/a.png", "404"]
+        answer: 1
+        why: "alias location prefiksini almashtiradi; root esa qo'shib qo'yadi."
+      - q: "Eng yuqori ustuvorlikka ega location turi?"
+        options: ["Regex", "Aniq moslik `=`", "Prefix", "Default"]
+        answer: 1
+        why: "= topilsa qidiruv darhol to'xtaydi."
+    hardcore:
+      - "JSON formatidagi access log sozlang va jq bilan eng sekin 10 ta so'rovni chiqaring."
+
+  - key: nginx-03-reverse-proxy
+    title: "Reverse proxy: FastAPI ortida Nginx"
+    theory: |
+      `location / { proxy_pass http://127.0.0.1:8000; }` — Nginx so'rovni ilovaga uzatadi. Muhim headerlar: `Host $host`, `X-Real-IP $remote_addr`, `X-Forwarded-For $proxy_add_x_forwarded_for`, `X-Forwarded-Proto $scheme` — aks holda ilova haqiqiy client IP va protokolni bilmaydi.
+      Timeoutlar: proxy_connect_timeout, proxy_read_timeout. Ilova 127.0.0.1 da tinglaydi — tashqaridan faqat Nginx orqali. Uvicorn'ga `--proxy-headers --forwarded-allow-ips=127.0.0.1`.
+    task: |
+      1) J1 Linux loyihangizdagi FastAPI (systemd) ni Nginx ortiga qo'ying.
+      2) Ilovada `request.client.host` ni qaytaradigan endpoint — headerlarsiz va headerlar bilan farqni ko'ring.
+      3) Ilovani to'xtatib 502, ilovada `sleep(70)` qilib 504 ni oling.
+      4) error.log'da har birining xabarini toping.
+    done: "Ilova haqiqiy client IP'ni ko'radi; 502 va 504 ni o'zingiz yaratib ko'rdingiz."
+    resources:
+      - {title: "nginx — proxy module", url: "https://nginx.org/en/docs/http/ngx_http_proxy_module.html"}
+      - {title: "FastAPI — Behind a Proxy", url: "https://fastapi.tiangolo.com/advanced/behind-a-proxy/"}
+    quiz:
+      - q: "Proxy ortidagi ilova barcha client'larni 127.0.0.1 deb ko'rsa, nima yetishmayapti?"
+        options: ["TLS", "X-Real-IP/X-Forwarded-For headerlari va ilovada ularni qabul qilish", "DNS", "Firewall"]
+        answer: 1
+        why: "Ilova faqat to'g'ridan-to'g'ri ulanuvchini (Nginx) ko'radi."
+      - q: "Ilova o'chiq bo'lsa Nginx qaytaradigan kod?"
+        options: ["504", "502", "503", "500"]
+        answer: 1
+        why: "Upstream'ga ulanib bo'lmadi — Bad Gateway."
+    hardcore:
+      - "Ilova ishlamay qolganda 502 o'rniga chiroyli 'texnik ishlar' sahifasini ko'rsating (`error_page 502 503 504`) va uni maintenance flag fayli bilan qo'lda yoqiladigan qiling."
+
+  - key: nginx-04-upstream
+    title: "Load balancing va WebSocket"
+    theory: |
+      `upstream app { server 127.0.0.1:8001; server 127.0.0.1:8002; }` + `proxy_pass http://app;`. Algoritmlar: round-robin (default), `least_conn`, `ip_hash` (sticky). `max_fails=3 fail_timeout=30s` — passiv health check: xato bergan backend vaqtincha chiqariladi. `backup` — zaxira server.
+      WebSocket uchun: `proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade";`. `keepalive` — backend bilan ulanishlarni qayta ishlatish.
+    task: |
+      1) FastAPI'ni 2 portda (systemd template `app@8001`, `app@8002`) ishga tushiring; `/` PID qaytarsin.
+      2) upstream bilan balanslang, 10 marta curl — PID almashinuvini ko'ring.
+      3) Bittasini to'xtating — sayt ishlashda davom etadimi? `max_fails` ta'sirini kuzating.
+      4) `least_conn` ga o'tib, sekin endpoint bilan farqni sinang.
+    done: "Bitta backend o'chganda sayt ishlaydi."
+    resources:
+      - {title: "nginx — HTTP Load Balancing", url: "https://docs.nginx.com/nginx/admin-guide/load-balancer/http-load-balancer/"}
+    quiz:
+      - q: "Bir user doim bir xil backend'ga tushishi uchun?"
+        options: ["least_conn", "ip_hash", "round-robin", "backup"]
+        answer: 1
+        why: "Client IP xeshi bo'yicha (sticky session)."
+      - q: "WebSocket proxy uchun nima shart?"
+        options: ["HTTP/2", "HTTP/1.1 va Upgrade/Connection headerlari", "TLS", "ip_hash"]
+        answer: 1
+        why: "Ulanish protokolini almashtirish uchun."
+    hardcore:
+      - "Rolling restart skripti: backend'larni birma-bir to'xtatib-yoqib, `hey`/`ab` yuklamasi davomida bitta ham 5xx bo'lmasligini isbotlang."
+
+  - key: nginx-05-tls
+    title: "Let's Encrypt bilan HTTPS"
+    theory: |
+      Let's Encrypt — bepul 90 kunlik sertifikatlar (ACME protokoli). `certbot --nginx -d domen` — sertifikat oladi va Nginx'ni sozlaydi; avtomatik yangilash systemd timer orqali (`certbot renew --dry-run` bilan tekshiring). Domen yo'q bo'lsa `<IP>.sslip.io` ishlaydi.
+      Yaxshi sozlamalar: HTTP → HTTPS redirect (301), HSTS (`Strict-Transport-Security`), TLS 1.2+ faqat, OCSP stapling. SSL Labs testi bilan baholang.
+    task: |
+      1) Domen yoki `<IP>.sslip.io` ni server block'ga yozing.
+      2) `certbot --nginx -d ...` bilan sertifikat oling, redirect'ni yoqing.
+      3) `certbot renew --dry-run`, `systemctl list-timers | grep certbot`.
+      4) ssllabs.com/ssltest'da kamida A baho oling.
+    done: "HTTPS ishlaydi, renew dry-run muvaffaqiyatli, SSL Labs: A."
+    resources:
+      - {title: "Certbot instructions", url: "https://certbot.eff.org/instructions"}
+      - {title: "Mozilla SSL Configuration Generator", url: "https://ssl-config.mozilla.org/"}
+    quiz:
+      - q: "Let's Encrypt sertifikati necha kun amal qiladi?"
+        options: ["30", "90", "365", "Cheksiz"]
+        answer: 1
+        why: "Shuning uchun avtomatik yangilash majburiy."
+      - q: "HSTS nima qiladi?"
+        options: ["Siqadi", "Brauzerga saytni faqat HTTPS orqali ochishni buyuradi", "Keshlaydi", "Sertifikat beradi"]
+        answer: 1
+        why: "Downgrade hujumlaridan himoya."
+    hardcore:
+      - "Sertifikat yangilangandan keyin Nginx'ni avtomatik reload qiluvchi `--deploy-hook` qo'shing va muddatni tekshiradigan skriptni health-check toolkit'ingizga ulang."
+
+  - key: nginx-06-lab
+    kind: lab
+    title: "LAB: Nginx 502, 403, 404 va redirect loop"
+    theory: |
+      Nginx muammolarini tez topish: avval `nginx -t`, keyin error.log (`tail -n 50 /var/log/nginx/error.log`), keyin backend holati (`ss -tulpn`, `systemctl status app`), keyin ruxsatlar (`namei -l` — www-data fayllarni o'qiy oladimi).
+      Odatiy sabablar: 502 — backend o'chiq yoki noto'g'ri port/socket; 403 — fayl ruxsati yoki `index` yo'q; 404 — root/alias xatosi; redirect loop — HTTPS redirect + proxy ortida X-Forwarded-Proto yo'q.
+    task: |
+      O'zingiz buzing (har biridan keyin tuzating va "belgi → sabab → tuzatish" yozing):
+      1) proxy_pass portini noto'g'ri yozing → 502.
+      2) /var/www/devops ni 700 qiling → 403.
+      3) alias o'rniga root yozing → 404.
+      4) Ilovada HTTP→HTTPS redirect qiling, Nginx X-Forwarded-Proto bermasin → redirect loop (`curl -IL` bilan ko'ring).
+    done: "4 ta holatning har birini error.log'dan 5 daqiqada topdingiz."
+    resources:
+      - {title: "nginx — Debugging", url: "https://nginx.org/en/docs/debugging_log.html"}
+    quiz:
+      - q: "Statik fayl 403 qaytaryapti. Birinchi tekshiruv?"
+        options: ["DNS", "error.log va www-data'ning fayl/papka ruxsatlari", "TLS", "Upstream"]
+        answer: 1
+        why: "Ko'pincha 'permission denied' error.log'da yozilgan."
+      - q: "Proxy ortida cheksiz redirect sababi ko'pincha?"
+        options: ["DNS", "Ilova so'rovni HTTP deb o'ylaydi, chunki X-Forwarded-Proto uzatilmagan", "Port", "Sertifikat muddati"]
+        answer: 1
+        why: "TLS Nginx'da tugaydi, ilova esa http ko'radi."
+    hardcore:
+      - "Do'stingizdan (yoki o'zingiz yozgan random skriptdan) serveringizda bilmagan holda 1 ta nginx buzilishi yaratishni so'rang va uni faqat loglar bilan toping."
+
+  - key: sec-01-ssh-hardening
+    title: "SSH va foydalanuvchilar hardening"
+    theory: |
+      Yangi serverda birinchi soat: alohida sudo user, kalit bilan kirish, `PermitRootLogin no`, `PasswordAuthentication no`, `KbdInteractiveAuthentication no`, `AllowUsers deploy`, `MaxAuthTries 3`. Port o'zgartirish — xavfsizlik emas, faqat loglarni kamaytiradi.
+      sshd_config.d/ ichida alohida fayl — tizim yangilanishlari asosiy konfigni almashtirsa ham saqlanadi. Har doim `sshd -t` va ochiq ikkinchi sessiya bilan.
+    task: |
+      1) `/etc/ssh/sshd_config.d/10-hardening.conf` yarating: yuqoridagi sozlamalar.
+      2) `sshd -t && systemctl reload ssh`; yangi terminalda kirishni tekshiring.
+      3) `ssh -o PreferredAuthentications=password deploy@IP` — rad etilishini ko'ring.
+      4) `ssh-audit` bilan serveringizni tekshiring va tavsiyalarni qo'llang.
+    done: "Faqat deploy kalit bilan kira oladi, ssh-audit ogohlantirishlari kamaydi."
+    resources:
+      - {title: "ssh-audit", url: "https://github.com/jtesta/ssh-audit"}
+      - {title: "Mozilla — OpenSSH guidelines", url: "https://infosec.mozilla.org/guidelines/openssh"}
+    quiz:
+      - q: "SSH portini 22 dan 2222 ga o'zgartirish nima beradi?"
+        options: ["To'liq himoya", "Faqat avtomatik skanerlar shovqinini kamaytiradi, haqiqiy himoya emas", "Hech narsa", "Tezlik"]
+        answer: 1
+        why: "Asosiy himoya — kalit autentifikatsiya va cheklovlar."
+      - q: "Nima uchun sozlamani sshd_config.d/ ga yozish yaxshi?"
+        options: ["Tezroq", "Paket yangilanishi asosiy faylni almashtirsa ham sozlamalaringiz saqlanadi", "Majburiy", "Farqi yo'q"]
+        answer: 1
+        why: "Drop-in fayllar — konfiguratsiya boshqaruvida standart naqsh."
+    hardcore:
+      - "SSH uchun ikki faktorli autentifikatsiya (kalit + TOTP, `libpam-google-authenticator`) sozlang va faqat deploy user uchun yoqing."
+
+  - key: sec-02-fail2ban
+    title: "fail2ban, ufw va avtomatik yangilanishlar"
+    theory: |
+      fail2ban loglarni kuzatib, ko'p marta xato kirgan IP'larni vaqtincha bloklaydi (jail'lar: sshd, nginx-http-auth, recidive). Sozlama /etc/fail2ban/jail.local da: bantime, findtime, maxretry.
+      Xavfsizlik bazasi: ufw (faqat 22/80/443), fail2ban, unattended-upgrades (xavfsizlik yangilanishlari), `needrestart` (qaysi servis yangilanishdan keyin restart talab qiladi). Hammasi — avtomatlashtirilgan, qo'lda emas.
+    task: |
+      1) fail2ban o'rnating, jail.local'da sshd jail'ni yoqing (bantime 1h, maxretry 5).
+      2) Boshqa IP'dan (telefon interneti) ataylab 5 marta xato kiring — ban bo'lganini `fail2ban-client status sshd` da ko'ring, keyin unban.
+      3) `recidive` jail'ni yoqing.
+      4) `unattended-upgrades --dry-run --debug` natijasini o'qing.
+    done: "Brute-force IP avtomatik bloklanadi."
+    resources:
+      - {title: "fail2ban wiki", url: "https://github.com/fail2ban/fail2ban/wiki"}
+      - {title: "DigitalOcean — Protect SSH with Fail2Ban", url: "https://www.digitalocean.com/community/tutorials/how-to-protect-ssh-with-fail2ban-on-ubuntu-22-04"}
+    quiz:
+      - q: "fail2ban qanday ishlaydi?"
+        options: ["Trafikni shifrlaydi", "Loglarda xato urinishlarni topib, IP'ni firewall orqali vaqtincha bloklaydi", "Parollarni o'zgartiradi", "Antivirus"]
+        answer: 1
+        why: "Log asosidagi reaktiv himoya."
+      - q: "`recidive` jail nima?"
+        options: ["SSH jail", "Qayta-qayta ban olgan IP'larni uzoqroq muddatga bloklaydi", "Nginx jail", "Test jail"]
+        answer: 1
+        why: "Doimiy hujumchilar uchun."
+    hardcore:
+      - "Nginx loglari uchun o'z fail2ban filter'ingizni yozing: 1 daqiqada 50 dan ortiq 404 qaytargan IP'lar (skanerlar) ban bo'lsin. `fail2ban-regex` bilan sinang."
+
+  - key: sec-03-nginx-hardening
+    title: "Rate limiting, basic auth va security headerlar"
+    theory: |
+      Rate limit: `limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;` + `limit_req zone=api burst=20 nodelay;` — brute force va suiiste'moldan himoya; limit oshsa 429/503. Basic auth: `htpasswd` + `auth_basic` — admin sahifalar uchun oddiy qulf (faqat HTTPS bilan!).
+      Security headerlar: `X-Content-Type-Options nosniff`, `X-Frame-Options DENY`, `Referrer-Policy`, `Content-Security-Policy`. `server_tokens off` — versiyani yashirish.
+    task: |
+      1) /api/ uchun 5 r/s rate limit; `hey -n 200 -c 20` (yoki `ab`) bilan 429/503 larni ko'ring.
+      2) `limit_req_status 429` qo'ying.
+      3) /admin/ ga basic auth.
+      4) Security headerlarni qo'shib, securityheaders.com'da baholang; `server_tokens off`.
+    done: "Rate limit ishlaydi, securityheaders bahosi yaxshilandi."
+    resources:
+      - {title: "nginx — Rate Limiting", url: "https://blog.nginx.org/blog/rate-limiting-nginx"}
+      - {title: "securityheaders.com", url: "https://securityheaders.com/"}
+    quiz:
+      - q: "`burst=20` nima qiladi?"
+        options: ["Limitni o'chiradi", "Qisqa to'lqinlarda 20 tagacha so'rovni navbatga oladi", "20 marta ban qiladi", "20 soniya kutadi"]
+        answer: 1
+        why: "Normal user'larning qisqa portlashlari rad etilmasligi uchun."
+      - q: "Basic auth faqat qachon xavfsiz?"
+        options: ["Har doim", "HTTPS orqali", "HTTP orqali", "Hech qachon"]
+        answer: 1
+        why: "Parol base64 — shifrlanmagan."
+    hardcore:
+      - "Telegram bot webhook endpointiga faqat Telegram IP diapazonlaridan kirishga ruxsat bering (`allow`/`deny`) va secret token headerini Nginx'da tekshiring."
+
+  - key: sec-04-backup
+    title: "Backup strategiyasi: 3-2-1 va tiklash testi"
+    theory: |
+      3-2-1 qoidasi: 3 nusxa, 2 xil saqlash turi, 1 tasi boshqa joyda (offsite). Tiklash tekshirilmagan backup — backup emas. RPO (qancha ma'lumot yo'qotishga tayyormiz) va RTO (qancha vaqtda tiklaymiz) — backup jadvalini shular belgilaydi.
+      Vositalar: `rsync` (oddiy nusxa), `restic`/`borg` (deduplikatsiya, shifrlash, snapshot'lar, S3 yoki SFTP'ga), DB uchun `pg_dump`. Retention: kunlik 7, haftalik 4, oylik 6.
+    task: |
+      1) restic o'rnating, lokal repo yarating (`restic init`), /srv/app va /etc ni backup qiling.
+      2) Ikkinchi joy: boshqa server SFTP yoki keyinroq S3 (hozircha lokal kompyuterga rsync).
+      3) Bitta faylni o'chirib, restic'dan tiklang.
+      4) `restic forget --keep-daily 7 --keep-weekly 4 --prune` va timer.
+    done: "O'chirilgan faylni backup'dan tikladingiz."
+    resources:
+      - {title: "restic documentation", url: "https://restic.readthedocs.io/"}
+      - {title: "Backblaze — The 3-2-1 Backup Strategy", url: "https://www.backblaze.com/blog/the-3-2-1-backup-strategy/"}
+    quiz:
+      - q: "3-2-1 qoidasidagi '1'?"
+        options: ["1 ta backup", "Kamida 1 nusxa boshqa joyda (offsite)", "1 kunlik", "1 parol"]
+        answer: 1
+        why: "Server yoki data-markaz yo'qolsa ham ma'lumot qoladi."
+      - q: "RPO nima?"
+        options: ["Tiklash vaqti", "Qancha vaqtlik ma'lumot yo'qotishga yo'l qo'yamiz", "Backup hajmi", "Parol"]
+        answer: 1
+        why: "Kunlik backup = RPO 24 soat."
+    hardcore:
+      - "To'liq DR mashqi: serverdagi ilova + DB'ni boshqa (yangi) serverga faqat backup'lardan tiklang, vaqtni o'lchang va RTO sifatida yozing."
+
+  - key: sec-05-postgres
+    title: "PostgreSQL asoslari DevOps uchun"
+    theory: |
+      DevOps Postgres'ni ishlab turishi kerak: o'rnatish, user va DB yaratish (`createuser`, `createdb`, `GRANT`), ulanish sozlamalari (postgresql.conf `listen_addresses`, pg_hba.conf — kim qayerdan qanday kiradi), servis va loglar.
+      Backup/restore: `pg_dump -Fc db > db.dump`, `pg_restore -d db db.dump`; hammasi: `pg_dumpall`. Monitoring uchun: `pg_stat_activity` (hozirgi so'rovlar), DB hajmi. Hech qachon 5432'ni internetga ochmang.
+    task: |
+      1) `apt install postgresql`; `appuser` va `appdb` yarating, faqat shu DB'ga huquq.
+      2) pg_hba.conf'da faqat localhost'dan parol (scram-sha-256) bilan kirishga ruxsat.
+      3) Test jadval va ma'lumot qo'shib `pg_dump -Fc`, DB'ni o'chirib `pg_restore` bilan tiklang.
+      4) pg_dump'ni restic backup'ingizga qo'shing.
+    done: "DB dump'dan to'liq tiklandi, port tashqaridan yopiq."
+    resources:
+      - {title: "PostgreSQL docs — pg_hba.conf", url: "https://www.postgresql.org/docs/current/auth-pg-hba-conf.html"}
+      - {title: "PostgreSQL docs — Backup and Restore", url: "https://www.postgresql.org/docs/current/backup.html"}
+    quiz:
+      - q: "Qaysi fayl client'lar qayerdan va qanday autentifikatsiya bilan ulanishini belgilaydi?"
+        options: ["postgresql.conf", "pg_hba.conf", "pg_ident.conf", "environment"]
+        answer: 1
+        why: "hba = host-based authentication."
+      - q: "`pg_dump -Fc` formati afzalligi?"
+        options: ["O'qish oson", "Siqilgan, pg_restore bilan tanlab va parallel tiklash mumkin", "Faqat sxema", "Tezroq ulanadi"]
+        answer: 1
+        why: "Custom format — production backup'lar uchun."
+    hardcore:
+      - "`pg_stat_statements` ni yoqib, eng og'ir 5 so'rovni toping; bitta sekin so'rovga index qo'shib, `EXPLAIN ANALYZE` bilan oldin/keyin vaqtini solishtiring."
+
+  - key: sec-06-project
+    kind: project
+    title: "LOYIHA: FastAPI ilova HTTPS ortida"
+    theory: |
+      Modul yakuni: haqiqiy production setup — internet → ufw → Nginx (TLS, rate limit, headerlar) → systemd'dagi ikki FastAPI instansiya → Postgres, hammasi backup bilan. Keyingi bosqichlarda aynan shuni Docker, CI/CD va Terraform bilan avtomatlashtirasiz.
+    task: |
+      1) FastAPI + Postgres (oddiy CRUD, masalan "eslatmalar") — `appsvc` user, systemd template 2 instansiya.
+      2) Nginx: upstream, HTTPS (certbot), redirect, HSTS, rate limit, security headerlar, JSON loglar.
+      3) Xavfsizlik: ufw, fail2ban, SSH hardening, Postgres faqat localhost.
+      4) Backup: pg_dump + restic + timer; tiklash testi.
+      5) README + arxitektura diagrammasi (mermaid): Internet → ufw → nginx:443 → uvicorn:8001/8002 → postgres.
+    done: "https://... ishlaydi, SSL Labs A, nmap'da faqat 22/80/443, tiklash testi o'tgan."
+    resources:
+      - {title: "milanm — Server Management", url: "https://github.com/milanm/DevOps-Roadmap#5-learn-server-management"}
+      - {title: "Mermaid — flowchart syntax", url: "https://mermaid.js.org/syntax/flowchart.html"}
+    quiz:
+      - q: "Bu arxitekturada Postgres porti qayerdan ochiq bo'lishi kerak?"
+        options: ["Internetdan", "Faqat localhost (yoki ichki tarmoq)", "Faqat Nginx'dan HTTP orqali", "Hammadan"]
+        answer: 1
+        why: "Ilova bilan bir serverda — 127.0.0.1."
+    hardcore:
+      - "Bitta buyruqli 'kill switch' runbook: serverni maintenance rejimiga o'tkazish (Nginx maintenance sahifa), DB'ni backup qilish, ilovani yangilash va qaytarish — hammasini skript qiling."

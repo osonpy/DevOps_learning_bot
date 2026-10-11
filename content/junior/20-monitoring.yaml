@@ -1,0 +1,459 @@
+# J4 · Monitoring va loglar · 41–43-hafta (18 dars)
+lessons:
+  - key: mon-01-observability
+    title: "Observability: metrikalar, loglar, traces"
+    theory: |
+      Monitoring — "nima buzildi?" savoliga javob (oldindan bilingan holatlar); observability — "nega buzildi?" (yangi holatlarni ham tushunish). Uch ustun: metrikalar (raqamlar vaqt bo'yicha — arzon, alert uchun), loglar (hodisalar — batafsil), traces (so'rovning xizmatlar bo'ylab yo'li).
+      Metodlar: USE (resurslar uchun: Utilization, Saturation, Errors) va RED (servislar uchun: Rate, Errors, Duration). Google'ning 4 oltin signali: latency, traffic, errors, saturation.
+    task: |
+      1) Botingiz va serveringiz uchun RED va USE metrikalari ro'yxatini yozing.
+      2) Hozirgi kuzatuv vositalaringiz (toolkit, CloudWatch, loglar) qaysi ustunni qamraydi — jadval.
+      3) "Bot javob bermayapti" holatida qaysi metrika/log birinchi yordam beradi?
+      4) Monitoring modulidan keyin qanday dashboard'lar bo'lishini chizib qo'ying.
+    done: "RED/USE ro'yxati va kuzatuv bo'shliqlari jurnalda."
+    resources:
+      - {title: "Google SRE Book — Monitoring Distributed Systems", url: "https://sre.google/sre-book/monitoring-distributed-systems/"}
+      - {title: "devopscube — What is Observability?", url: "https://devopscube.com/what-is-observability/"}
+    quiz:
+      - q: "RED metodidagi E?"
+        options: ["Energy", "Errors", "Events", "Endpoints"]
+        answer: 1
+        why: "Rate, Errors, Duration — servislar uchun."
+      - q: "Alert qilish uchun eng arzon va ishonchli signal?"
+        options: ["Loglar", "Metrikalar", "Traces", "Skrinshotlar"]
+        answer: 1
+        why: "Kichik hajm, tez so'rovlar."
+    hardcore:
+      - "4 oltin signalning har biri uchun botingizda qanday metrika yig'ish mumkinligini va uni qanday o'lchashni aniq yozing (metrika nomi, turi, label'lari)."
+
+  - key: mon-02-prometheus
+    title: "Prometheus arxitekturasi va o'rnatish"
+    theory: |
+      Prometheus — pull modeli: belgilangan oraliqda target'larning `/metrics` endpointidan metrikalarni tortadi (scrape) va vaqt qatorlari bazasida saqlaydi. Metrika = nom + label'lar + qiymat (`http_requests_total{method="GET",code="200"} 1027`). Komponentlar: Prometheus server, exporter'lar, Alertmanager, Pushgateway (qisqa job'lar uchun).
+      Metrika turlari: counter (faqat o'sadi), gauge (oshadi/kamayadi), histogram (taqsimot — latency), summary.
+    task: |
+      1) VPS'da (yoki lokal) Prometheus'ni Docker Compose bilan ishga tushiring (port faqat 127.0.0.1 yoki VPN!).
+      2) prometheus.yml: o'zini scrape qilsin; UI'da Targets sahifasini oching.
+      3) `/metrics` ni curl bilan o'qing — counter va gauge'larni toping.
+      4) Retention va disk hajmini sozlang (`--storage.tsdb.retention.time=15d`).
+    done: "Prometheus ishlaydi, targets UP."
+    resources:
+      - {title: "Prometheus — Getting started", url: "https://prometheus.io/docs/prometheus/latest/getting_started/"}
+      - {title: "Prometheus — Metric types", url: "https://prometheus.io/docs/concepts/metric_types/"}
+    quiz:
+      - q: "Prometheus qaysi modelda ishlaydi?"
+        options: ["Push", "Pull (scrape)", "Event stream", "Email"]
+        answer: 1
+        why: "Target'lardan tortadi; qisqa job'lar uchun Pushgateway."
+      - q: "So'rovlar soni uchun mos metrika turi?"
+        options: ["gauge", "counter", "summary", "info"]
+        answer: 1
+        why: "Faqat o'sadi; tezlikni rate() bilan olasiz."
+    hardcore:
+      - "Prometheus'ni Ansible roli sifatida o'rnating (J3 bilimlari) — konfig template va handler bilan."
+
+  - key: mon-03-exporters
+    title: "Exporters: node_exporter va cAdvisor"
+    theory: |
+      Exporter — tizim metrikalarini Prometheus formatida beruvchi dastur: node_exporter (CPU, RAM, disk, tarmoq, filesystem), cAdvisor (konteyner metrikalari), postgres_exporter, blackbox_exporter (tashqaridan tekshirish). Ko'plab dasturlar (Traefik, k3s) o'zi /metrics beradi.
+      Service discovery: statik, file_sd, docker_sd, kubernetes_sd — target'larni avtomatik topish.
+    task: |
+      1) node_exporter va cAdvisor'ni Compose'ga qo'shing, Prometheus scrape qilsin.
+      2) Targets UP ekanini tekshiring.
+      3) postgres_exporter qo'shing (bot DB'si uchun, faqat o'qish huquqli user bilan).
+      4) Har exporter'dan 3 ta muhim metrikani tanlab jurnalga yozing.
+    done: "Server, konteynerlar va DB metrikalari yig'ilyapti."
+    resources:
+      - {title: "Prometheus — Node Exporter guide", url: "https://prometheus.io/docs/guides/node-exporter/"}
+      - {title: "cAdvisor", url: "https://github.com/google/cadvisor"}
+    quiz:
+      - q: "Konteyner darajasidagi CPU/RAM metrikalari uchun?"
+        options: ["node_exporter", "cAdvisor", "blackbox_exporter", "Pushgateway"]
+        answer: 1
+        why: "Kubernetes'da kubelet ichida."
+      - q: "Exporter uchun DB user'i qanday bo'lishi kerak?"
+        options: ["Superuser", "Faqat monitoring uchun minimal (o'qish) huquqli", "App user", "Root"]
+        answer: 1
+        why: "Least privilege."
+    hardcore:
+      - "netcheck vositangizni (J1 Tarmoq loyihasi) Prometheus exporter'ga aylantiring va scrape qiling."
+
+  - key: mon-04-promql1
+    title: "PromQL 1: selectors, rate, aggregatsiya"
+    theory: |
+      Selector: `node_cpu_seconds_total{mode="idle"}`, regex `{job=~"node|cadvisor"}`. Range vector `[5m]`. Counter'dan tezlik: `rate(http_requests_total[5m])` (sekundiga). Aggregatsiya: `sum by (code) (rate(...))`, `avg`, `max`, `topk(5, ...)`.
+      Klassik so'rovlar: CPU foizi `100 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100`; disk bo'sh foiz `node_filesystem_avail_bytes / node_filesystem_size_bytes * 100`.
+    task: |
+      1) Prometheus UI'da CPU foizi, RAM foizi va disk bo'sh foizi so'rovlarini yozing.
+      2) Eng ko'p CPU ishlatayotgan 3 konteyner (cAdvisor, topk).
+      3) `rate` va `irate` farqini grafikda ko'ring.
+      4) So'rovlarni `queries.md` ga saqlang (keyin dashboard uchun).
+    done: "Asosiy 5 ta PromQL so'rovini xotiradan yozasiz."
+    resources:
+      - {title: "Prometheus — Querying basics", url: "https://prometheus.io/docs/prometheus/latest/querying/basics/"}
+      - {title: "PromLabs — PromQL cheat sheet", url: "https://promlabs.com/promql-cheat-sheet/"}
+    quiz:
+      - q: "Counter'dan sekundiga tezlikni olish?"
+        options: ["sum()", "rate(x[5m])", "avg()", "delta()"]
+        answer: 1
+        why: "Counter reset'larini ham to'g'ri hisoblaydi."
+      - q: "`sum by (code)` nima qiladi?"
+        options: ["Hamma narsani qo'shadi", "code label'i bo'yicha guruhlab yig'adi", "Filtrlaydi", "Saralaydi"]
+        answer: 1
+        why: "Qolgan label'lar yo'qoladi."
+    hardcore:
+      - "`predict_linear` bilan disk qachon to'lishini bashorat qiluvchi so'rov yozing (4 soatda to'ladi degan ogohlantirish uchun)."
+
+  - key: mon-05-promql2
+    title: "PromQL 2: histogram, percentile, recording rules"
+    theory: |
+      Latency uchun histogram: `_bucket{le="0.5"}`, `_sum`, `_count`. Percentile: `histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))`. O'rtacha qiymat ko'pincha aldaydi — p95/p99 foydalanuvchi tajribasini yaxshiroq ko'rsatadi.
+      Recording rules — og'ir so'rovlarni oldindan hisoblab, yangi metrika sifatida saqlash (`job:http_requests:rate5m`): dashboard va alertlar tez ishlaydi.
+    task: |
+      1) FastAPI'ga prometheus metrics (masalan prometheus-fastapi-instrumentator) qo'shing.
+      2) p50, p95, p99 latency so'rovlari.
+      3) O'rtacha va p99'ni bitta grafikda solishtiring (sekin endpoint bilan).
+      4) 2 ta recording rule yozing va qayta yuklang.
+    done: "p95 latency grafigi va recording rule'lar ishlaydi."
+    resources:
+      - {title: "Prometheus — Histograms and summaries", url: "https://prometheus.io/docs/practices/histograms/"}
+      - {title: "Prometheus — Recording rules", url: "https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/"}
+    quiz:
+      - q: "Nima uchun o'rtacha latency emas, p95/p99?"
+        options: ["Chiroyli", "O'rtacha sekin so'rovlarni yashiradi; percentile eng yomon tajribali foydalanuvchilarni ko'rsatadi", "Tezroq", "Majburiy"]
+        answer: 1
+        why: "1% sekin so'rov — minglab norozi foydalanuvchi."
+      - q: "Recording rule nima uchun?"
+        options: ["Log yozish", "Og'ir so'rovlarni oldindan hisoblab, tez ishlatish", "Alert", "Backup"]
+        answer: 1
+        why: "Dashboard va alert unumdorligi."
+    hardcore:
+      - "Native histogram'lar yoki exemplar'lar haqida o'qib, exemplar orqali metrikadan trace'ga o'tish g'oyasini tushuntiring."
+
+  - key: mon-06-lab
+    kind: lab
+    title: "LAB: noto'g'ri so'rov — noto'g'ri xulosa"
+    theory: |
+      Monitoringdagi xatolar ham incident: `rate` ni gauge'ga qo'llash, juda qisqa range (`[30s]` scrape oralig'i 30s bo'lsa — ma'lumot yetmaydi), `sum` dan keyin `rate` (avval rate, keyin sum!), label kardinalligi (user_id label'da — Prometheus xotirasini yeydi), mavjud bo'lmagan metrika (bo'sh natija ≠ 0).
+    task: |
+      Har xatoni qasddan qiling va to'g'ri versiya bilan solishtiring:
+      1) `sum(http_requests_total)` → `rate` dan keyin vs oldin.
+      2) `[15s]` range bilan 15s scrape oralig'ida natijalar.
+      3) Metrikaga user_id label qo'shib, `prometheus_tsdb_head_series` o'sishini kuzating — keyin olib tashlang.
+      4) Yo'q metrika bilan alert ifodasi — nima uchun ishlamaydi (`absent()` bilan tuzating).
+    done: "4 ta PromQL tuzog'ini o'zingiz ko'rdingiz."
+    resources:
+      - {title: "Robust Perception — rate then sum", url: "https://www.robustperception.io/rate-then-sum-never-sum-then-rate/"}
+    quiz:
+      - q: "To'g'ri tartib?"
+        options: ["rate(sum(x))", "sum(rate(x[5m]))", "Farqi yo'q", "avg(sum(x))"]
+        answer: 1
+        why: "sum counter reset'larini buzadi."
+      - q: "user_id ni label qilishning xavfi?"
+        options: ["Yo'q", "Yuqori kardinallik — vaqt qatorlari soni portlaydi, Prometheus xotirasi tugaydi", "Sekin grafik", "Xavfsizlik"]
+        answer: 1
+        why: "Label qiymatlari cheklangan to'plam bo'lishi kerak."
+    hardcore:
+      - "promtool bilan alert qoidalaringiz uchun unit test yozing (`promtool test rules`)."
+
+  - key: mon-07-grafana
+    title: "Grafana: dashboard'lar, panellar, o'zgaruvchilar"
+    theory: |
+      Grafana — vizualizatsiya: data source (Prometheus, Loki, CloudWatch), dashboard → panellar (time series, stat, gauge, table), o'zgaruvchilar (`$instance` — bitta dashboard ko'p server uchun), threshold'lar. Tayyor dashboard'lar (Node Exporter Full, ID 1860) — import qilib o'rganing, keyin o'zingiz yarating.
+      Yaxshi dashboard: yuqorida eng muhim (RED/oltin signallar), tushunarli nomlar va birliklar, kam lekin foydali panellar.
+    task: |
+      1) Grafana'ni Compose'ga qo'shing (admin parol sir, port faqat VPN/tunnel orqali).
+      2) Prometheus data source, Node Exporter Full dashboard'ini import qiling.
+      3) O'z "Bot overview" dashboard'ingiz: RED panellari, `$instance` o'zgaruvchisi.
+      4) Panel birliklari (seconds, percent, bytes) va threshold ranglari.
+    done: "Bot overview dashboard tayyor."
+    resources:
+      - {title: "Grafana — Getting started with Prometheus", url: "https://grafana.com/docs/grafana/latest/getting-started/get-started-grafana-prometheus/"}
+      - {title: "Grafana tutorials", url: "https://grafana.com/tutorials/"}
+    quiz:
+      - q: "Dashboard o'zgaruvchisining foydasi?"
+        options: ["Rang", "Bitta dashboard'ni ko'p server/servis uchun tanlov bilan ishlatish", "Xavfsizlik", "Tezlik"]
+        answer: 1
+        why: "Dublikat dashboard'lar kerak emas."
+      - q: "Yaxshi dashboard'ning yuqori qismida nima bo'lishi kerak?"
+        options: ["Barcha metrikalar", "Foydalanuvchi ta'sirini ko'rsatuvchi asosiy signallar (RED)", "Loglar", "Logotip"]
+        answer: 1
+        why: "Bir qarashda holat."
+    hardcore:
+      - "Grafana'ni GitHub OAuth (yoki basic auth + nginx) bilan himoyalab, faqat sizning akkauntingiz kirishini sozlang."
+
+  - key: mon-08-app-metrics
+    title: "Ilova metrikalari: bot uchun custom metrikalar"
+    theory: |
+      Infratuzilma metrikalari yetmaydi — biznes va ilova metrikalari kerak: bot uchun qayta ishlangan update'lar soni va xatolar (counter, handler label bilan), handler javob vaqti (histogram), faol foydalanuvchilar, bugungi bajarilgan darslar, yuborilgan eslatmalar, scheduler tick davomiyligi. `prometheus_client`: Counter, Gauge, Histogram, `start_http_server` yoki aiohttp endpoint.
+      Label'lar cheklangan qiymatlar bo'lsin (handler nomi — ha, user_id — yo'q).
+    task: |
+      1) Botga `prometheus_client` qo'shing: updates_total{handler}, errors_total{handler}, handler_seconds (histogram), lessons_completed_total, reminders_sent_total, tick_seconds.
+      2) `/metrics` endpoint (aiohttp, faqat ichki network).
+      3) Prometheus scrape va Grafana'da "Bot business" dashboard.
+      4) Middleware orqali barcha handler'lar uchun avtomatik o'lchash.
+    done: "Bot metrikalari Grafana'da."
+    resources:
+      - {title: "prometheus_client (Python)", url: "https://prometheus.github.io/client_python/"}
+      - {title: "Prometheus — Metric and label naming", url: "https://prometheus.io/docs/practices/naming/"}
+    quiz:
+      - q: "Handler javob vaqti uchun mos metrika turi?"
+        options: ["Counter", "Histogram", "Gauge", "Info"]
+        answer: 1
+        why: "Percentile hisoblash uchun."
+      - q: "Prometheus metrika nomi konvensiyasi?"
+        options: ["camelCase", "snake_case, birlik bilan: _seconds, _bytes, counter uchun _total", "Har qanday", "UPPERCASE"]
+        answer: 1
+        why: "Tushunarli va izchil."
+    hardcore:
+      - "Scheduler tick'ining oxirgi muvaffaqiyatli vaqti uchun gauge qo'shing va 5 daqiqadan eski bo'lsa alert beradigan qoida yozing (bot 'osilib' qolishi)."
+
+  - key: mon-09-alertmanager
+    title: "Alertmanager va Telegram receiver"
+    theory: |
+      Alert qoidalari Prometheus'da (`expr`, `for: 5m` — qisqa sakrashlarda signal bermaslik, `labels: severity`, `annotations: summary, runbook_url`), yuborish — Alertmanager'da: routing (severity bo'yicha), grouping (bir xil alertlarni birlashtirish), inhibition (server o'chsa uning servislari haqida alert bermaslik), silences (ish paytida). Alertmanager'da tayyor Telegram receiver bor.
+    task: |
+      1) Alertmanager'ni Compose'ga qo'shing, Telegram receiver (bot token va chat_id — sir).
+      2) Qoidalar: InstanceDown, DiskAlmostFull (predict_linear), HighErrorRate, BotTickStale.
+      3) Har alertni qasddan ishga tushirib, Telegram'ga kelishini va resolved xabarini tekshiring.
+      4) Rejalashtirilgan ish uchun silence yarating.
+    done: "4 ta alert sinalgan, Telegram'ga firing va resolved keladi."
+    resources:
+      - {title: "Prometheus — Alerting rules", url: "https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/"}
+      - {title: "Alertmanager — Configuration (telegram_config)", url: "https://prometheus.io/docs/alerting/latest/configuration/"}
+    quiz:
+      - q: "Alert qoidasidagi `for: 5m`?"
+        options: ["5 daqiqada yuborish", "Shart 5 daqiqa davomida rost bo'lsagina alert firing bo'ladi", "5 marta", "Silence"]
+        answer: 1
+        why: "Qisqa sakrashlar shovqinini kamaytiradi."
+      - q: "Inhibition nima?"
+        options: ["Alert o'chirish", "Asosiy nosozlik (server o'chgan) alerti bor paytda unga bog'liq alertlarni bostirish", "Silence", "Grouping"]
+        answer: 1
+        why: "Alert bo'roni oldini oladi."
+    hardcore:
+      - "Ikki kanal: `critical` — darhol ovozli Telegram xabar, `warning` — kunlik bitta yig'ma xabar (group_interval/repeat_interval bilan)."
+
+  - key: mon-10-alert-design
+    title: "Alert dizayni: simptom, alert fatigue, runbook"
+    theory: |
+      Yaxshi alert: foydalanuvchiga ta'sir qiladigan simptom haqida (xatolar foizi, latency, servis o'chgan), harakat talab qiladi va aniq harakat bor (runbook), kam va ishonchli. Yomon alert: CPU 80% (sabab, ko'pincha zararsiz), hech kim reaksiya qilmaydigan, tez-tez o'z-o'zidan yo'qoladigan — alert fatigue'ga olib keladi va haqiqiy alert e'tiborsiz qoladi.
+      Har alertda: nima bo'ldi, qanchalik jiddiy, nima qilish (runbook_url), dashboard havolasi.
+    task: |
+      1) Mavjud alertlaringizni "harakat talab qiladimi? simptommi? runbook bormi?" mezonlari bilan baholang.
+      2) Kamida bittasini olib tashlang yoki warning'ga tushiring.
+      3) Har critical alertga runbook_url va dashboard havolasi qo'shing; RUNBOOK.md'da tegishli bo'limlar.
+      4) Bir haftalik alertlar sonini kuzatish rejasi.
+    done: "Har critical alertning runbook'i bor."
+    resources:
+      - {title: "Rob Ewaschuk — My Philosophy on Alerting", url: "https://docs.google.com/document/d/199PqyG3UsyXlwieHaqbGiWVa8eMWi8zzAn0YfcApr8Q/preview"}
+      - {title: "Google SRE Workbook — Alerting on SLOs", url: "https://sre.google/workbook/alerting-on-slos/"}
+    quiz:
+      - q: "Alert fatigue nima?"
+        options: ["Ko'p ishlash", "Haddan tashqari ko'p/foydasiz alertlar tufayli haqiqiy alertlarga e'tibor yo'qolishi", "Server charchashi", "Alert yo'qligi"]
+        answer: 1
+        why: "Monitoringning eng keng tarqalgan muammosi."
+      - q: "Qaysi biri yaxshiroq paging alert?"
+        options: ["CPU > 80%", "So'rovlarning 5% dan ko'pi 5 daqiqa davomida xato qaytaryapti", "RAM > 70%", "Disk I/O yuqori"]
+        answer: 1
+        why: "Foydalanuvchiga ta'sir — simptom."
+    hardcore:
+      - "Alertmanager webhook'idan oxirgi 30 kunlik alertlar statistikasini (soni, eng shovqinli alert) yig'adigan kichik servis yozing."
+
+  - key: mon-11-loki
+    title: "Loglar: Loki va LogQL"
+    theory: |
+      Loki — "loglar uchun Prometheus": log mazmunini emas, faqat label'larni indekslaydi (arzon), Grafana bilan. Agent: Grafana Alloy (Promtail'ning davomchisi) — fayllar, journald, Docker loglarini yig'adi. LogQL: `{app="bot"} |= "ERROR"`, `| json | level="error"`, metrikalar: `sum by (handler) (rate({app="bot"} | json | level="error" [5m]))`.
+      J2'dagi JSON loglaringiz bu yerda o'z qiymatini ko'rsatadi.
+    task: |
+      1) Loki + Alloy'ni Compose'ga qo'shing; Docker konteyner loglarini yig'ing.
+      2) Grafana'da Loki data source, Explore'da `{container="bot"}`.
+      3) JSON parse bilan faqat error'lar va handler bo'yicha xatolar tezligi.
+      4) Loki retention'ni sozlang.
+    done: "Bot loglari Grafana'da qidiriladi."
+    resources:
+      - {title: "Grafana Loki docs", url: "https://grafana.com/docs/loki/latest/"}
+      - {title: "LogQL", url: "https://grafana.com/docs/loki/latest/query/"}
+    quiz:
+      - q: "Loki'ning Elasticsearch'dan asosiy farqi?"
+        options: ["Tezroq qidiruv", "Faqat label'larni indekslaydi — arzon saqlash, mazmun bo'yicha qidiruv sekinroq", "Faqat metrika", "Pullik"]
+        answer: 1
+        why: "Kardinallik qoidalari bu yerda ham amal qiladi."
+      - q: "Loglarni JSON qilib yozishning Loki'dagi foydasi?"
+        options: ["Yo'q", "`| json` bilan maydonlar bo'yicha filtrlash va metrika hisoblash", "Kichikroq", "Shifrlangan"]
+        answer: 1
+        why: "Strukturalangan loglar."
+    hardcore:
+      - "LogQL asosidagi alert (Loki ruler): 5 daqiqada 10 dan ortiq 'ERROR' bo'lsa Alertmanager orqali Telegram'ga."
+
+  - key: mon-12-lab
+    kind: lab
+    title: "LAB: incident — metrikalar va loglar bilan sabab topish"
+    theory: |
+      Haqiqiy incident simulyatsiyasi. Tartib: 1) alert va dashboard — nima, qachondan, qanchalik keng; 2) o'zgarishlar (deploy bo'ldimi? — deploy annotatsiyalari!); 3) metrikalar korrelyatsiyasi (latency o'sishi bilan bir vaqtda nima o'zgardi: DB ulanishlar, CPU, xotira); 4) loglar — aniq xato; 5) gipoteza → tekshirish → tuzatish; 6) postmortem.
+    task: |
+      O'zingiz uchun (yoki do'st bilan) 2 ta "noma'lum" incident tayyorlang, keyin faqat dashboard va loglardan sababini toping:
+      A) Sekin DB so'rovi (index'siz katta jadval) — latency p99 o'sadi.
+      B) Xotira oqishi (har so'rovda list'ga qo'shish) — OOMKilled va restartlar.
+      1) Grafana'ga deploy annotatsiyalarini qo'shing (CI'dan API orqali).
+      2) Har incident uchun xronologiya va qisqa postmortem.
+    done: "Ikki incident faqat observability vositalari bilan aniqlandi."
+    resources:
+      - {title: "Grafana — Annotations", url: "https://grafana.com/docs/grafana/latest/dashboards/build-dashboards/annotate-visualizations/"}
+    quiz:
+      - q: "Incident'da birinchi beriladigan savollardan biri?"
+        options: ["Kim aybdor?", "Oxirgi paytda nima o'zgardi (deploy, konfig)?", "Qancha pul ketdi?", "Qachon tushlik?"]
+        answer: 1
+        why: "Ko'p incident'lar o'zgarishdan keyin."
+      - q: "Deploy annotatsiyalarining foydasi?"
+        options: ["Chiroyli", "Metrika o'zgarishini aniq deploy bilan bog'lash", "Majburiy", "Tezlik"]
+        answer: 1
+        why: "Korrelyatsiya bir qarashda."
+    hardcore:
+      - "Incident uchun 'war room' Grafana dashboard'i: bitta ekranda RED, resurslar, DB, xato loglari va deploy annotatsiyalari."
+
+  - key: mon-13-kps
+    title: "kube-prometheus-stack: Kubernetes monitoringi"
+    theory: |
+      kube-prometheus-stack (Helm) — Prometheus Operator, Prometheus, Alertmanager, Grafana, node_exporter, kube-state-metrics va tayyor dashboard/alertlar. Operator CRD'lari: ServiceMonitor/PodMonitor (qaysi servislarni scrape qilish — label bilan), PrometheusRule (alertlar).
+      Resurs talabi sezilarli — k3s VPS'da xotirani kuzating, kerak bo'lsa komponentlarni kamaytiring.
+    task: |
+      1) kind (yoki k3s) ga kube-prometheus-stack'ni Helm bilan o'rnating (o'z values bilan, retention qisqa).
+      2) Grafana'dagi Kubernetes dashboard'larini ko'ring.
+      3) Bot uchun ServiceMonitor yozing — metrikalar Prometheus'ga tushsin.
+      4) Bot alertlarini PrometheusRule sifatida chart'ingizga qo'shing.
+    done: "Bot metrikalari Operator orqali yig'ilyapti, alertlar CRD sifatida."
+    resources:
+      - {title: "kube-prometheus-stack chart", url: "https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack"}
+      - {title: "GfG — Prometheus and Grafana using Helm", url: "https://www.geeksforgeeks.org/devops/working-with-prometheus-and-grafana-using-helm/"}
+    quiz:
+      - q: "ServiceMonitor nima?"
+        options: ["Pod", "Prometheus Operator CRD'si — qaysi Service'larni scrape qilishni label bilan belgilaydi", "Dashboard", "Alert"]
+        answer: 1
+        why: "Konfig faylni qo'lda tahrirlash kerak emas."
+      - q: "kube-state-metrics nimani beradi?"
+        options: ["Node CPU", "Kubernetes obyektlari holati (deployment replikalari, pod holatlari)", "Loglar", "Traces"]
+        answer: 1
+        why: "Masalan: kerakli va mavjud replika farqi."
+    hardcore:
+      - "Helm chart'ingizga `serviceMonitor.enabled` va `prometheusRule.enabled` flaglarini qo'shib, chart'ni monitoring bilan birga yetkazib bering."
+
+  - key: mon-14-blackbox
+    title: "Blackbox exporter: uptime va SSL monitoringi"
+    theory: |
+      Ichki metrikalar "servis ishlayapti" deyishi mumkin, lekin foydalanuvchi uni ko'rmasligi mumkin (DNS, TLS, firewall). Blackbox exporter — tashqaridan tekshirish: HTTP (status, latency, matn), TCP, ICMP, DNS, TLS sertifikat muddati (`probe_ssl_earliest_cert_expiry`). Eng yaxshisi — tekshiruvni boshqa joydan ham bajarish (masalan ikkinchi server yoki tashqi servis).
+    task: |
+      1) blackbox_exporter va http_2xx moduli; saytlaringiz va bot health endpointlari.
+      2) SSL muddati 14 kundan kam bo'lsa alert.
+      3) Grafana'da uptime % paneli (`avg_over_time(probe_success[30d])`).
+      4) J1'dagi bash SSL tekshiruvini endi Prometheus'ga topshiring.
+    done: "Tashqi uptime va SSL monitoringi ishlaydi."
+    resources:
+      - {title: "blackbox_exporter", url: "https://github.com/prometheus/blackbox_exporter"}
+    quiz:
+      - q: "Blackbox monitoring nimani topadi, ichki metrikalar esa yo'q?"
+        options: ["CPU", "Foydalanuvchi tomondan ko'rinadigan muammolar: DNS, TLS, tarmoq, tashqi kirish", "RAM", "Loglar"]
+        answer: 1
+        why: "Tashqaridan qarash."
+      - q: "30 kunlik uptime foizi?"
+        options: ["rate(probe_success[30d])", "avg_over_time(probe_success[30d]) * 100", "sum(probe_success)", "count(probe_success)"]
+        answer: 1
+        why: "probe_success 0/1 gauge."
+    hardcore:
+      - "Ikkinchi joydan (masalan GitHub Actions cron yoki boshqa VPS) ham tekshiring va 'faqat bir joydan yiqilyapti' holatini tarmoq muammosi sifatida ajrating."
+
+  - key: mon-15-slo
+    title: "SLI va SLO: kirish"
+    theory: |
+      SLI — servis sifati o'lchovi (masalan muvaffaqiyatli so'rovlar foizi, 500 ms dan tez javoblar foizi). SLO — maqsad (30 kunda 99.5%). Error budget — ruxsat etilgan nosozlik (99.5% → oyiga ~3.6 soat): budget tugasa — yangi funksiyalar o'rniga ishonchlilikka e'tibor. SLA — mijoz bilan shartnoma (SLO'dan bo'shroq).
+      Bu Middle/Senior'da chuqur bo'ladi (SRE modul); hozir — bot uchun birinchi SLO.
+    task: |
+      1) Bot uchun 2 SLI: eslatmalar o'z vaqtida yuborilishi foizi, handler'lar muvaffaqiyat foizi.
+      2) SLO: 30 kunda 99%; error budget'ni daqiqalarda hisoblang.
+      3) PromQL'da SLI va qolgan budget'ni hisoblovchi recording rule'lar.
+      4) Grafana'da SLO paneli.
+    done: "Botning birinchi SLO va error budget paneli bor."
+    resources:
+      - {title: "Google SRE Book — Service Level Objectives", url: "https://sre.google/sre-book/service-level-objectives/"}
+    quiz:
+      - q: "99.9% SLO oyiga taxminan qancha nosozlikka ruxsat beradi?"
+        options: ["~7 soat", "~43 daqiqa", "~4 daqiqa", "0"]
+        answer: 1
+        why: "30 kun × 0.1% ≈ 43 daqiqa."
+      - q: "Error budget tugasa nima qilinadi?"
+        options: ["Hech narsa", "Ishonchlilikni yaxshilashga e'tibor, xavfli relizlarni sekinlashtirish", "SLO'ni o'chirish", "Server sotib olish"]
+        answer: 1
+        why: "Tezlik va barqarorlik balansi."
+    hardcore:
+      - "Multi-window, multi-burn-rate alert (SRE Workbook uslubi) yozing: budget tez yonsa darhol, sekin yonsa ogohlantirish."
+
+  - key: mon-16-tracing
+    title: "Tracing va OpenTelemetry: kirish"
+    theory: |
+      Trace — bitta so'rovning butun yo'li: span'lar (bot handler → DB so'rovi → Telegram API chaqiruvi), har birining vaqti. Mikroservislarda "qayerda sekin?" savoliga eng yaxshi javob. OpenTelemetry — metrika, log va trace uchun vendor-neytral standart va SDK'lar (auto-instrumentation: FastAPI, SQLAlchemy, httpx). Backend: Grafana Tempo yoki Jaeger.
+    task: |
+      1) FastAPI ilovaga OpenTelemetry auto-instrumentation (FastAPI + SQLAlchemy).
+      2) Jaeger (yoki Tempo) ni Compose'da ishga tushirib, trace'larni ko'ring.
+      3) Sekin endpoint'ning trace'ida qaysi span eng uzunligini toping.
+      4) Trace ID'ni loglarga qo'shing — log'dan trace'ga o'tish.
+    done: "So'rov trace'ida sekin qism aniqlandi."
+    resources:
+      - {title: "OpenTelemetry — Python getting started", url: "https://opentelemetry.io/docs/languages/python/getting-started/"}
+      - {title: "Jaeger — Getting started", url: "https://www.jaegertracing.io/docs/latest/getting-started/"}
+    quiz:
+      - q: "Span nima?"
+        options: ["Log qatori", "Trace ichidagi bitta amal (vaqt, nom, atributlar bilan)", "Metrika", "Alert"]
+        answer: 1
+        why: "Span'lar daraxti = trace."
+      - q: "OpenTelemetry'ning afzalligi?"
+        options: ["Faqat Google uchun", "Vendor-neytral standart — backend'ni kodni o'zgartirmasdan almashtirish mumkin", "Bepul hosting", "Faqat loglar"]
+        answer: 1
+        why: "Bir marta instrumentatsiya."
+    hardcore:
+      - "Botga qo'lda span'lar qo'shing (handler, DB, Telegram API) va bitta /today buyrug'ining to'liq trace'ini ko'rsating."
+
+  - key: mon-17-as-code
+    title: "Dashboards va alertlar kod sifatida"
+    theory: |
+      UI'da qo'lda yasalgan dashboard yo'qolishi va drift bo'lishi mumkin. Kod sifatida: Grafana provisioning (data source va dashboard JSON fayllari papkadan avtomatik yuklanadi), alert qoidalari Git'da (`promtool check rules` CI'da), Kubernetes'da — ConfigMap label'i bilan dashboard'lar (sidecar), PrometheusRule CRD. Murakkabroq: Grafonnet/Jsonnet, Terraform Grafana provider.
+    task: |
+      1) Dashboard'laringizni JSON qilib eksport qiling va `monitoring/dashboards/` ga.
+      2) Grafana provisioning (datasources.yaml, dashboards.yaml) — Grafana konteynerini o'chirib-yoqganda hammasi joyida.
+      3) CI: `promtool check rules` va `amtool check-config`.
+      4) Grafana volume'ini o'chirib, provisioning'dan to'liq tiklanishini isbotlang.
+    done: "Monitoring konfiguratsiyasi to'liq Git'da."
+    resources:
+      - {title: "Grafana — Provisioning", url: "https://grafana.com/docs/grafana/latest/administration/provisioning/"}
+    quiz:
+      - q: "Dashboard'larni kod sifatida saqlashning asosiy foydasi?"
+        options: ["Chiroyli", "Versiyalash, review va qayta tiklash mumkin; drift yo'q", "Tezroq", "Pullik emas"]
+        answer: 1
+        why: "IaC prinsipi monitoringga."
+      - q: "Alert qoidalarini CI'da tekshirish vositasi?"
+        options: ["kubectl", "promtool check rules", "helm lint", "ruff"]
+        answer: 1
+        why: "Sintaksis xatoli qoida Prometheus'ni yuklatmaydi."
+    hardcore:
+      - "Terraform Grafana provider bilan data source, folder va dashboard'ni boshqaring."
+
+  - key: mon-18-project
+    kind: project
+    title: "LOYIHA: to'liq observability stack"
+    theory: |
+      Modul yakuni: bot, server va Kubernetes uchun metrikalar, loglar, alertlar, SLO va dashboard'lar — hammasi kod sifatida. Bu Junior portfolio'ngizni yakunlovchi eng ko'zga ko'rinadigan qism: skrinshotlar README'da.
+    task: |
+      1) Metrikalar: node, konteyner/K8s, Postgres, bot custom metrikalari, blackbox.
+      2) Loglar: Loki + Alloy, JSON parse.
+      3) Alertlar: 5–8 ta, har birida runbook_url; Telegram; inhibition va grouping.
+      4) Dashboard'lar: Overview (RED + SLO), Bot business, Infra; deploy annotatsiyalari.
+      5) Hammasi Git'da (provisioning, PrometheusRule, Helm values); README'da skrinshotlar va arxitektura.
+    done: "Har komponent o'chirilsa — alert keladi va runbook bor; stack Git'dan tiklanadi."
+    resources:
+      - {title: "milanm — Monitoring & Observability", url: "https://github.com/milanm/DevOps-Roadmap#10-learn-monitoring--observability"}
+      - {title: "Beautiful Dashboards with Grafana and Prometheus", url: "https://www.youtube.com/watch?v=fzny5uUaAeY"}
+    quiz:
+      - q: "Monitoring stack'ning o'zi ishdan chiqsa qanday bilasiz?"
+        options: ["Bilib bo'lmaydi", "Tashqi 'dead man's switch' (Watchdog alerti doim firing — kelmay qolsa muammo)", "Loglardan", "Har kuni qo'lda"]
+        answer: 1
+        why: "Monitoringni ham monitoring qilish kerak."
+    hardcore:
+      - "Watchdog alertini tashqi xizmatga (masalan healthchecks.io) ulab, Prometheus yoki Alertmanager to'xtasa 5 daqiqada Telegram'ga xabar kelishini isbotlang."

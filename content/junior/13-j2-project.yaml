@@ -1,0 +1,128 @@
+# J2 · Bosqich loyihasi · 24-hafta (6 dars)
+# Gate J2 → J3: kod push'dan production'gacha qo'lsiz yo'l bor va 2 daqiqada rollback qila olasiz.
+lessons:
+  - key: j2p-01-design
+    kind: project
+    title: "J2 LOYIHA 1/6: Arxitektura va talablar"
+    theory: |
+      J2 bosqich loyihasi: ikki muhitli (staging va production) to'liq delivery tizimi. Avval yozma dizayn — talablar, arxitektura diagrammasi, pipeline bosqichlari, rollback rejasi. Yaxshi DevOps muhandisi avval chizadi, keyin quradi.
+    task: |
+      1) `DESIGN.md`: maqsad, talablar (deploy < 10 daq, rollback < 2 daq, 2 muhit), cheklovlar (bitta VPS).
+      2) Mermaid diagrammalar: arxitektura (VPS'da staging + prod stack'lari) va pipeline oqimi.
+      3) Muhitlarni ajratish: alohida compose loyiha nomi, network, DB, bot token.
+      4) Xavflar va ularni kamaytirish ro'yxati.
+    done: "DESIGN.md repo'da, diagrammalar tushunarli."
+    resources:
+      - {title: "Google — Design Docs at Google", url: "https://www.industrialempathy.com/posts/design-docs-at-google/"}
+    quiz:
+      - q: "Bitta VPS'da staging va production'ni ajratishning minimal sharti?"
+        options: ["Hech narsa", "Alohida compose loyiha, network, DB va sirlar", "Alohida portlar faqat", "Alohida user faqat"]
+        answer: 1
+        why: "Staging xatosi production ma'lumotiga tegmasin."
+    hardcore:
+      - "Design doc'ni boshqa odamga (yoki AI'ga) review uchun bering, kamida 3 ta savolga yozma javob qo'shing."
+
+  - key: j2p-02-ci
+    kind: project
+    title: "J2 LOYIHA 2/6: CI — lint, test, scan"
+    theory: |
+      Ikkinchi qadam — sifat darvozasi. Har PR: lint, unit + integration test (Postgres), xavfsizlik skanerlari, image build (push'siz). Maqsad — 5 daqiqadan kam.
+    task: |
+      1) CI'ni reusable workflow'larga ajrating.
+      2) Parallel job'lar va cache bilan vaqtni 5 daqiqadan kamga tushiring.
+      3) Branch protection: barcha tekshiruvlar majburiy.
+      4) Vaqtni oldin/keyin o'lchab README'ga yozing.
+    done: "PR CI < 5 daqiqa, hamma tekshiruvlar majburiy."
+    resources:
+      - {title: "GitHub Docs — Using concurrency", url: "https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/control-the-concurrency-of-workflows-and-jobs"}
+    quiz:
+      - q: "CI vaqtini qisqartirishning eng samarali usullari?"
+        options: ["Testlarni o'chirish", "Parallel job'lar, dependency cache, Docker layer cache", "Kuchli runner sotib olish faqat", "Kamroq commit"]
+        answer: 1
+        why: "Sifatni yo'qotmasdan tezlashtirish."
+    hardcore:
+      - "Testlarni pytest-xdist bilan parallel ishlating va eng sekin 5 testni `--durations` bilan topib optimallashtiring."
+
+  - key: j2p-03-cd
+    kind: project
+    title: "J2 LOYIHA 3/6: CD — staging va production"
+    theory: |
+      Uchinchi qadam — yetkazib berish: main'ga merge → image → avtomatik staging deploy → staging smoke test → tasdiqlash → production deploy (aynan o'sha image, qayta build qilinmaydi!). "Build once, deploy many".
+    task: |
+      1) staging environment: avtomatik; production: required reviewer.
+      2) Ikkala muhitga bir xil deploy reusable workflow, faqat input farqi.
+      3) Production'ga staging'da tekshirilgan aynan o'sha image digest'i boradi.
+      4) Har deploy'dan keyin Telegram'ga: muhit, versiya, kim tasdiqladi.
+    done: "Bitta image staging va production'dan o'tadi."
+    resources:
+      - {title: "Continuous Delivery — Build once, deploy many", url: "https://continuousdelivery.com/implementing/patterns/"}
+    quiz:
+      - q: "Nima uchun production uchun image qayta build qilinmaydi?"
+        options: ["Vaqt tejash faqat", "Staging'da tekshirilgan aynan o'sha artefakt production'ga borishi uchun", "Majburiy", "Arzon"]
+        answer: 1
+        why: "Qayta build — boshqa dependency'lar, boshqa natija bo'lishi mumkin."
+    hardcore:
+      - "Staging smoke test'ni haqiqiy end-to-end qiling: test bot orqali Telegram API'ga /start yuborib, javobni tekshirsin."
+
+  - key: j2p-04-observe
+    kind: project
+    title: "J2 LOYIHA 4/6: Minimal kuzatuv"
+    theory: |
+      To'rtinchi qadam — ko'rish: deploy'lar va ilova holatini kuzatish. To'liq monitoring J4'da bo'ladi; hozir minimal: health endpoint, tashqi uptime tekshiruvi, deploy va xato xabarlari Telegram'ga, strukturalangan (JSON) loglar.
+    task: |
+      1) Botda JSON loglar (structlog yoki logging formatter).
+      2) Tashqi uptime: opsctl yoki bepul uptime servisi har 5 daqiqada health'ni tekshirsin.
+      3) Deploy, rollback va xatolar uchun Telegram kanali (ops-alerts).
+      4) `docker logs ... | jq 'select(.level=="error")'` bilan xatolarni filtrlash.
+    done: "Bot o'chsa 5 daqiqa ichida bilasiz."
+    resources:
+      - {title: "structlog docs", url: "https://www.structlog.org/"}
+    quiz:
+      - q: "JSON loglarning oddiy matndan afzalligi?"
+        options: ["Chiroyli", "Mashina tomonidan ishonchli filtrlash va qidirish (jq, Loki)", "Kichikroq", "Tezroq"]
+        answer: 1
+        why: "Strukturalangan ma'lumot."
+    hardcore:
+      - "Har log yozuviga request/update ID qo'shing va bitta Telegram update'ning butun yo'lini loglarda kuzatib ko'rsating."
+
+  - key: j2p-05-rollback
+    kind: project
+    title: "J2 LOYIHA 5/6: Rollback mashqi va postmortem"
+    theory: |
+      Beshinchi qadam — muvaffaqiyatsizlikka tayyorgarlik. Ataylab buzilgan reliz chiqarib, aniqlash va tiklashni o'lchaysiz, keyin blameless postmortem yozasiz. Postmortem — ayblash emas, tizimni yaxshilash.
+    task: |
+      1) Ataylab buzilgan versiya (masalan noto'g'ri env nomi) production'ga.
+      2) Aniqlash vaqti va tiklash vaqtini (MTTR) o'lchang.
+      3) POSTMORTEM.md: xronologiya, ta'sir, sabab, nima yaxshi ishladi, nima yomon, harakatlar (egasi va muddati bilan).
+      4) Kamida 1 ta harakatni darhol amalga oshiring.
+    done: "MTTR < 2 daqiqa, postmortem yozilgan."
+    resources:
+      - {title: "Google SRE — Postmortem Culture", url: "https://sre.google/sre-book/postmortem-culture/"}
+    quiz:
+      - q: "Blameless postmortem'ning maqsadi?"
+        options: ["Aybdorni topish", "Tizim va jarayonni yaxshilash — odamlar emas, sharoitlar tahlil qilinadi", "Hisobot uchun", "Majburiy hujjat"]
+        answer: 1
+        why: "Ayblash odamlarni xatolarni yashirishga undaydi."
+    hardcore:
+      - "Postmortem'dagi har harakat uchun GitHub Issue oching va ularni bitta milestone'ga yig'ing."
+
+  - key: j2p-06-gate
+    kind: project
+    title: "J2 GATE: push'dan production'gacha"
+    theory: |
+      Bosqich imtihoni: yangi funksiyani (masalan botga yangi buyruq) feature branch'dan production'gacha faqat Git va pipeline orqali chiqarasiz, keyin uni rollback qilasiz. O'tsangiz — J3 (IaC va Cloud) ga tayyorsiz.
+    task: |
+      1) Botga kichik yangi buyruq qo'shing (masalan /streak_top).
+      2) Branch → PR (CI yashil) → merge → staging → tasdiqlash → production. Taymer bilan.
+      3) Production'da rollback qiling — vaqtni o'lchang (< 2 daq).
+      4) README: demo GIF/skrinshotlar, diagramma. RETRO-J2.md.
+    done: "Qo'lda serverga kirmasdan reliz va rollback. J2 tugadi!"
+    resources:
+      - {title: "roadmap.sh — DevOps", url: "https://roadmap.sh/devops"}
+    quiz:
+      - q: "J2 gate'ning asosiy mezoni?"
+        options: ["Ko'p commit", "Qo'lsiz yetkazib berish va tez rollback", "Ko'p test", "Chiroyli README"]
+        answer: 1
+        why: "Delivery pipeline — J2'ning natijasi."
+    hardcore:
+      - "Gate'ni lead time 15 daqiqadan kam (commit'dan production'gacha) bilan o'ting — qaysi qadamlarni tezlashtirish kerakligini rejalashtiring."

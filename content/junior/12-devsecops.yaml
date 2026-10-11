@@ -1,0 +1,153 @@
+# J2 · DevSecOps asoslari · 23-hafta (6 dars)
+lessons:
+  - key: dso-01-intro
+    title: "DevSecOps va shift-left"
+    theory: |
+      DevSecOps — xavfsizlik pipeline'ning har bosqichiga qo'shilgan, oxirida alohida tekshiruv emas. Shift-left: muammo qancha erta topilsa, shuncha arzon. Qatlamlar: sirlar oqishi, dependency zaifliklari, kod tahlili (SAST), image va IaC skanerlash, runtime.
+      Oddiy tahdid modeli (STRIDE yoki "nima noto'g'ri ketishi mumkin?"): aktivlar (bot token, DB), kirish nuqtalari (Telegram, SSH, CI), kim hujum qilishi mumkin, himoya.
+    task: |
+      1) Botingiz uchun oddiy tahdid modeli: 5 ta aktiv, 5 ta kirish nuqtasi, har biri uchun xavf va himoya.
+      2) Hozirgi pipeline'da qaysi xavfsizlik tekshiruvlari bor/yo'q — jadval.
+      3) OWASP Top 10 ro'yxatini ko'rib, botingizga tegishlilarini belgilang.
+    done: "Tahdid modeli va bo'shliqlar ro'yxati jurnalda."
+    resources:
+      - {title: "OWASP DevSecOps Guideline", url: "https://owasp.org/www-project-devsecops-guideline/"}
+      - {title: "OWASP Threat Modeling Cheat Sheet", url: "https://cheatsheetseries.owasp.org/cheatsheets/Threat_Modeling_Cheat_Sheet.html"}
+    quiz:
+      - q: "Shift-left nima?"
+        options: ["Kodni chapga surish", "Xavfsizlik va test tekshiruvlarini jarayonning ertaroq bosqichiga olib kelish", "Eski versiyaga qaytish", "Serverni ko'chirish"]
+        answer: 1
+        why: "Erta topilgan muammo arzon tuzatiladi."
+      - q: "Bot uchun eng qimmatli aktivlardan biri?"
+        options: ["README", "Bot token va DB ma'lumotlari", "Logo", "CI badge"]
+        answer: 1
+        why: "Token oshkor bo'lsa bot boshqariladi."
+    hardcore:
+      - "OWASP Threat Dragon bilan botingiz arxitekturasi uchun ma'lumot oqimi diagrammasi va tahdidlarni chizing."
+
+  - key: dso-02-secrets
+    title: "Secret scanning: gitleaks va push protection"
+    theory: |
+      Kodga tushgan sir — eng ko'p uchraydigan va eng xavfli xato; bot skanerlar GitHub'dagi kalitlarni daqiqalarda topadi. Himoya qatlamlari: pre-commit gitleaks (lokal), CI'da gitleaks (butun tarix), GitHub secret scanning + push protection.
+      Sir topilsa tartib: 1) darhol rotate (yangilash), 2) foydalanish loglarini tekshirish, 3) tarixdan tozalash, 4) sabab tahlili.
+    task: |
+      1) CI'ga gitleaks job (to'liq tarix bilan, `fetch-depth: 0`).
+      2) GitHub repo Settings'da secret scanning va push protection'ni yoqing.
+      3) Test repo'da soxta GitHub token formatidagi qatorni push qilishga urining — bloklanishini ko'ring.
+      4) "Sir oshkor bo'ldi" runbook'ini yozing.
+    done: "Sirlar 3 qatlamda ushlanadi, runbook tayyor."
+    resources:
+      - {title: "gitleaks", url: "https://github.com/gitleaks/gitleaks"}
+      - {title: "GitHub Docs — Push protection", url: "https://docs.github.com/en/code-security/secret-scanning/introduction/about-push-protection"}
+    quiz:
+      - q: "Sir tasodifan push qilindi. Birinchi qadam?"
+        options: ["Repo'ni o'chirish", "Sirni darhol rotate qilish", "Commit'ni revert", "Kutish"]
+        answer: 1
+        why: "Oshkor bo'lgan sir — kompromentatsiya qilingan deb hisoblanadi."
+      - q: "Nima uchun CI'da gitleaks `fetch-depth: 0` bilan?"
+        options: ["Tezroq", "Faqat oxirgi commit emas, butun tarixni tekshirish uchun", "Majburiy", "Cache"]
+        answer: 1
+        why: "Eski commitlardagi sirlar ham xavfli."
+    hardcore:
+      - "trufflehog bilan barcha public repo'laringizni skanerlang va 'verified' natijalar bo'lsa tuzating."
+
+  - key: dso-03-deps
+    title: "Dependency scanning: pip-audit, Dependabot, Renovate"
+    theory: |
+      Kodingizning katta qismi — boshqalarning kutubxonalari. pip-audit (PyPI zaifliklar bazasi), Dependabot (zaifliklar haqida alert va yangilanish PR'lari: pip, docker, github-actions), Renovate (moslashuvchanroq muqobil). Lock fayllar — aniq versiyalar va takrorlanuvchanlik.
+      Yangilanishlarni avtomatlashtiring, lekin ko'r-ko'rona merge qilmang — CI testlari himoya chizig'i.
+    task: |
+      1) CI'ga `pip-audit -r requirements.txt` job.
+      2) `.github/dependabot.yml`: pip, docker, github-actions — haftalik.
+      3) Kelgan Dependabot PR'ini CI yashil bo'lgandan keyin merge qiling.
+      4) Ataylab eski zaif versiyani (masalan eski `requests`) qo'shib, pip-audit yiqilishini ko'ring.
+    done: "Dependabot PR'lari keladi, zaif dependency CI'ni to'xtatadi."
+    resources:
+      - {title: "pip-audit", url: "https://github.com/pypa/pip-audit"}
+      - {title: "GitHub Docs — Dependabot version updates", url: "https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuring-dependabot-version-updates"}
+    quiz:
+      - q: "Dependabot qaysi ekotizimlarni yangilay oladi (bizning loyihada)?"
+        options: ["Faqat pip", "pip, Docker base image, GitHub Actions", "Faqat Docker", "Hech qaysi"]
+        answer: 1
+        why: "Uchalasini ham yoqing."
+      - q: "Yangilanish PR'larini xavfsiz merge qilishning sharti?"
+        options: ["Hech qanday", "Ishonchli CI testlari", "Admin ruxsati", "Sana"]
+        answer: 1
+        why: "Testlar bo'lmasa yangilanish — lotereya."
+    hardcore:
+      - "Renovate'ni sozlab, patch yangilanishlarni CI yashil bo'lsa avtomatik merge qiladigan (automerge) va major'larni guruhlaydigan qiling."
+
+  - key: dso-04-sast
+    title: "SAST: bandit va CodeQL/semgrep"
+    theory: |
+      SAST — kodni ishga tushirmasdan zaif naqshlarni topish: SQL injection, `shell=True`, `yaml.load`, hardcoded parollar, zaif kriptografiya. Python uchun: bandit (oddiy, tez), semgrep (qoidalar bilan, ko'p tillar), CodeQL (GitHub, chuqur tahlil, public repo'larda bepul).
+      False positive'lar bo'ladi — har birini asos bilan e'tiborsiz qoldiring (`# nosec` izoh bilan), ko'r-ko'rona o'chirmang.
+    task: |
+      1) `bandit -r src/` — natijalarni o'qing va tuzating/asoslang.
+      2) CI'ga bandit (yoki semgrep) qo'shing.
+      3) Public repo bo'lsa CodeQL'ni yoqing va Security tab'da natijalarni ko'ring.
+      4) Ataylab `subprocess(shell=True)` bilan injection yozib, ushlanishini tekshiring.
+    done: "SAST CI'da, Security tab'da natijalar."
+    resources:
+      - {title: "Bandit docs", url: "https://bandit.readthedocs.io/"}
+      - {title: "Semgrep docs", url: "https://semgrep.dev/docs/"}
+    quiz:
+      - q: "SAST nima?"
+        options: ["Ishlayotgan ilovani tekshirish", "Manba kodni statik tahlil qilib zaifliklarni topish", "Yuklama testi", "Image skan"]
+        answer: 1
+        why: "DAST — ishlayotgan ilovani tekshiradi."
+      - q: "False positive bilan to'g'ri munosabat?"
+        options: ["Vositani o'chirish", "Tekshirib, asos bilan istisno qilish", "E'tiborsiz qoldirish", "Kodni o'chirish"]
+        answer: 1
+        why: "Asoslangan istisno audit uchun ham muhim."
+    hardcore:
+      - "O'z semgrep qoidangizni yozing: loyihada `print(` o'rniga `logging` ishlatilishini talab qilsin va CI'da tekshirsin."
+
+  - key: dso-05-sbom
+    title: "Image scan, SBOM va SARIF"
+    theory: |
+      SBOM (Software Bill of Materials) — image/ilovadagi barcha komponentlar ro'yxati (CycloneDX yoki SPDX). Yangi CVE chiqqanda "bu bizga tegadimi?" savoliga SBOM bilan daqiqada javob berasiz. syft yoki `trivy image --format cyclonedx`.
+      SARIF — xavfsizlik natijalarining standart formati; GitHub Security tab'ga yuklanadi (`github/codeql-action/upload-sarif`). Siyosat: CRITICAL — pipeline yiqiladi, HIGH — ogohlantirish va vazifa.
+    task: |
+      1) Build'dan keyin Trivy image scan, CRITICAL'da fail.
+      2) Natijani SARIF qilib Security tab'ga yuklang.
+      3) SBOM (CycloneDX) generatsiya qilib, release'ga artefakt sifatida biriktiring.
+      4) SBOM'dan ma'lum paket versiyasini jq bilan qidiring.
+    done: "Security tab'da image natijalari, release'da SBOM."
+    resources:
+      - {title: "aquasecurity/trivy-action", url: "https://github.com/aquasecurity/trivy-action"}
+      - {title: "CycloneDX", url: "https://cyclonedx.org/"}
+    quiz:
+      - q: "SBOM'ning asosiy foydasi?"
+        options: ["Image kichrayadi", "Yangi zaiflik chiqqanda qaysi tizimlar ta'sirlanganini tez aniqlash", "Tezlik", "Shifrlash"]
+        answer: 1
+        why: "Komponentlar inventarizatsiyasi."
+      - q: "SARIF nima?"
+        options: ["Shifrlash algoritmi", "Statik tahlil natijalari uchun standart format", "Image formati", "Log formati"]
+        answer: 1
+        why: "Turli vositalar natijasini bir joyda ko'rish."
+    hardcore:
+      - "SBOM'ni image'ga attestation sifatida biriktiring (`cosign attest`) va `cosign verify-attestation` bilan tekshiring."
+
+  - key: dso-06-project
+    kind: project
+    title: "LOYIHA: xavfsizlik tekshiruvli pipeline"
+    theory: |
+      Modul yakuni: bot pipeline'iga to'liq xavfsizlik qatlamini qo'shasiz va "Security" bo'limini README'ga yozasiz. Intervyuda "pipeline'ingiz qanday himoyalangan?" savoliga aniq javob bo'ladi.
+    task: |
+      1) pre-commit: gitleaks, ruff, hadolint.
+      2) CI: gitleaks (tarix), pip-audit, bandit/semgrep, trivy (image + config), SBOM.
+      3) Dependabot (pip, docker, actions); action'lar SHA bilan qotirilgan.
+      4) Siyosat: CRITICAL → fail, qolganlari → Security tab.
+      5) README "Security" bo'limi + SECURITY.md (zaiflikni qanday xabar qilish).
+    done: "Ataylab qo'shilgan sir, zaif dependency va zaif image — uchalasi ham pipeline'ni to'xtatdi."
+    resources:
+      - {title: "milanm — DevSecOps Fundamentals", url: "https://github.com/milanm/DevOps-Roadmap#bonus-learn-devsecops-fundamentals"}
+      - {title: "GfG — What is DevSecOps", url: "https://www.geeksforgeeks.org/blogs/what-is-devsecops/"}
+    quiz:
+      - q: "Xavfsizlik tekshiruvlari qaysi tartibda arzonroq?"
+        options: ["Image scan → SAST → secret", "Secret scan (pre-commit) → SAST/deps (CI) → image scan (build'dan keyin)", "Faqat image scan", "Tartib muhim emas"]
+        answer: 1
+        why: "Eng arzon va tez tekshiruvlar oldinda."
+    hardcore:
+      - "OpenSSF Scorecard'ni repo'ga qo'shib, ballni kamida 2 ballga oshiring va qaysi tavsiyalarni bajarganingizni yozing."

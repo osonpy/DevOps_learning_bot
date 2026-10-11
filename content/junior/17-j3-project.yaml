@@ -1,0 +1,254 @@
+# J3 · Bosqich loyihasi · 34–35-hafta (12 dars)
+# Gate J3 → J4: butun muhitni `terraform destroy` qilib, 15 daqiqada qayta ko'tara olasiz.
+lessons:
+  - key: j3p-01-plan
+    kind: project
+    title: "J3 LOYIHA 1/12: Reja va arxitektura"
+    theory: |
+      J3 bosqich loyihasi — 2 hafta: botni AWS'da kod bilan to'liq ishlaydigan, kuzatiladigan va tiklanadigan holatda. Avval reja: maqsadlar, arxitektura, narx chegarasi (oyiga kredit doirasida), RTO/RPO maqsadlari.
+    task: |
+      1) DESIGN.md: maqsad, arxitektura diagrammasi (VPC, ALB, ASG, RDS, SSM, CloudWatch), narx taxmini.
+      2) RTO = 15 daqiqa, RPO = 24 soat — buni qanday ta'minlaysiz.
+      3) Bot uchun polling vs webhook (ALB orqali) tanlovini asoslang.
+      4) 12 kunlik vazifalar ro'yxati (GitHub Issues/Project).
+    done: "Dizayn va reja tayyor."
+    resources:
+      - {title: "AWS Architecture Center", url: "https://aws.amazon.com/architecture/"}
+    quiz:
+      - q: "RTO 15 daqiqa nimani talab qiladi?"
+        options: ["Hech narsa", "Muhitni avtomatik (IaC) va sinalgan tartibda tez qayta ko'tarish", "Ko'p server", "Kuchli internet"]
+        answer: 1
+        why: "Qo'lda tiklash 15 daqiqaga sig'maydi."
+    hardcore:
+      - "Narx taxminini Infracost bilan Terraform kodidan avtomatik hisoblang va qo'lda hisobingiz bilan solishtiring."
+
+  - key: j3p-02-network
+    kind: project
+    title: "J3 LOYIHA 2/12: Network qatlami"
+    theory: |
+      Tarmoq poydevori: modulni ishlab chiqarish sifatiga keltirish — 2 AZ, aniq CIDR rejasi, narx uchun NAT qarori, Flow Logs (qisqa retention), tag'lar.
+    task: |
+      1) Network modulini yakunlang, outputs va README.
+      2) NAT qarorini hujjatlang (narx vs xavfsizlik).
+      3) VPC Flow Logs (7 kun retention).
+      4) checkov toza.
+    done: "Network moduli tayyor va hujjatlangan."
+    resources:
+      - {title: "AWS — VPC design best practices", url: "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-best-practices.html"}
+    quiz:
+      - q: "Flow Logs retention nima uchun qisqa?"
+        options: ["Majburiy", "Xarajatni nazorat qilish — o'rganish muhitida uzoq saqlash shart emas", "Tezlik", "Xavfsizlik"]
+        answer: 1
+        why: "Log hajmi pullik."
+    hardcore:
+      - "Network modulini `terraform test` bilan test qiling: subnetlar to'g'ri AZ'larda va CIDR'lar kesishmasligini tekshirsin."
+
+  - key: j3p-03-compute
+    kind: project
+    title: "J3 LOYIHA 3/12: Compute — ALB va ASG"
+    theory: |
+      Ilova qatlami: ALB (health check), ASG (min 1), launch template (Docker, ECR, SSM'dan sirlar), instance refresh, IAM instance profile (minimal huquqlar).
+    task: |
+      1) App modulini yakunlang; user data — minimal, Docker compose bilan botni ishga tushirsin.
+      2) Instance profile: SSM, ECR read, faqat `/bot/<env>/*` parametrlar.
+      3) instance_refresh yoqilgan.
+      4) Bitta instance'ni terminate qilib self-healing'ni tekshiring.
+    done: "ASG o'lgan instance'ni avtomatik almashtiradi, bot ishlaydi."
+    resources:
+      - {title: "AWS — Instance refresh", url: "https://docs.aws.amazon.com/autoscaling/ec2/userguide/asg-instance-refresh.html"}
+    quiz:
+      - q: "Bot polling rejimida ASG'da 2 instance bo'lsa qanday muammo?"
+        options: ["Yo'q", "Ikki nusxa bir vaqtda getUpdates qilib bir-biriga xalaqit beradi (konflikt)", "Tezroq", "Arzonroq"]
+        answer: 1
+        why: "Polling bot — bitta nusxa yoki webhook + ALB."
+    hardcore:
+      - "Botni webhook rejimiga o'tkazib, ALB orqali 2 instance'da ishlating (secret token tekshiruvi bilan)."
+
+  - key: j3p-04-db
+    kind: project
+    title: "J3 LOYIHA 4/12: Ma'lumotlar bazasi"
+    theory: |
+      DB qatlami: RDS (private), avtomatik backup, prod himoyalari, sirlar SSM/Secrets Manager'da, alembic migratsiyalari deploy jarayonida.
+    task: |
+      1) DB modulini yakunlang (backup retention, deletion protection prod'da).
+      2) Migratsiyalar qayerda va qachon ishlashini hal qiling (startup yoki alohida qadam) va asoslang.
+      3) Snapshot'dan tiklash mashqi.
+      4) App SG → DB SG havolasi; DB tashqaridan yopiq.
+    done: "Snapshot'dan tiklash ishladi."
+    resources:
+      - {title: "AWS — Restoring from a DB snapshot", url: "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_RestoreFromSnapshot.html"}
+    quiz:
+      - q: "Ko'p instance'li ilovada migratsiyani startup'da ishlatish xavfi?"
+        options: ["Yo'q", "Bir nechta instance bir vaqtda migratsiya qilishga urinishi mumkin", "Sekin", "Majburiy"]
+        answer: 1
+        why: "Alohida bir martalik qadam yoki lock."
+    hardcore:
+      - "Point-in-time recovery bilan DB'ni 10 daqiqa oldingi holatga yangi instance sifatida tiklang va ma'lumotni solishtiring."
+
+  - key: j3p-05-config
+    kind: project
+    title: "J3 LOYIHA 5/12: Konfiguratsiya va sirlar"
+    theory: |
+      Konfiguratsiya: bot .env qiymatlari SSM Parameter Store'da, instance startda o'qiydi; hech qanday sir AMI, user data yoki Git'da emas. Ansible (yoki user data skripti) bu jarayonni boshqaradi.
+    task: |
+      1) Barcha konfiguratsiyani `/bot/<env>/` ostiga.
+      2) Startup skripti: SSM'dan o'qib .env (600) yozadi yoki to'g'ridan-to'g'ri env sifatida beradi.
+      3) Parametr o'zgarganda qanday qo'llanishini hal qiling (instance refresh yoki restart).
+      4) `grep -r` bilan repo va AMI'da sir yo'qligini tekshiring.
+    done: "Sirlar faqat SSM'da."
+    resources:
+      - {title: "AWS — Parameter Store hierarchies", url: "https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-paramstore-hierarchies.html"}
+    quiz:
+      - q: "EC2 user data'ga sir yozishning xavfi?"
+        options: ["Yo'q", "User data instance metadata orqali ichkaridan o'qiladi va konsolda ko'rinadi", "Sekin", "Ishlamaydi"]
+        answer: 1
+        why: "Sirni SSM'dan role bilan oling."
+    hardcore:
+      - "SSM parametri o'zgarganda (EventBridge hodisasi) ASG instance refresh'ni avtomatik boshlaydigan qiling."
+
+  - key: j3p-06-ci-infra
+    kind: project
+    title: "J3 LOYIHA 6/12: Infra pipeline"
+    theory: |
+      Infratuzilma pipeline'i: PR'da plan + xavfsizlik + narx, main'da apply (tasdiqlash bilan), OIDC. Plan'da destroy topilsa qo'shimcha ogohlantirish (tf-13 skripti).
+    task: |
+      1) terraform.yml'ni yakunlang: fmt, validate, tflint, checkov, plan izohi, xavfli almashtirish tekshiruvi.
+      2) dev avtomatik apply, prod tasdiqlash bilan.
+      3) Kichik o'zgarish bilan ikki muhit oqimini sinang.
+      4) Pipeline diagrammasi README'da.
+    done: "Infra o'zgarishlari faqat PR orqali."
+    resources:
+      - {title: "HashiCorp — Automate Terraform with GitHub Actions", url: "https://developer.hashicorp.com/terraform/tutorials/automation/github-actions"}
+    quiz:
+      - q: "dev'ga avtomatik, prod'ga tasdiqlash bilan apply nima uchun?"
+        options: ["Majburiy", "Tezlik va xavfsizlik balansi: dev'da tez tajriba, prod'da inson nazorati", "Narx", "Farqi yo'q"]
+        answer: 1
+        why: "Risk darajasiga mos nazorat."
+    hardcore:
+      - "Plan'da faqat tag o'zgarishi bo'lsa prod'ga ham avtomatik apply, boshqa o'zgarishlarda tasdiqlash — shartli workflow yozing."
+
+  - key: j3p-07-app-deploy
+    kind: project
+    title: "J3 LOYIHA 7/12: Ilova deploy pipeline'i AWS'ga"
+    theory: |
+      Ilova pipeline'i (J2'dagini AWS'ga moslash): image ECR'ga (OIDC), deploy = yangi image tag'ini SSM parametriga yozish + ASG instance refresh (yoki SSM Run Command bilan compose pull/up), smoke test, rollback.
+    task: |
+      1) Image build → ECR push (OIDC).
+      2) Deploy usulini tanlang va amalga oshiring (instance refresh yoki SSM Run Command).
+      3) Smoke test ALB orqali; muvaffaqiyatsizlikda oldingi tag'ga qaytish.
+      4) Deploy xabarlari Telegram'ga.
+    done: "main'ga merge → bot AWS'da yangilanadi."
+    resources:
+      - {title: "AWS — Systems Manager Run Command", url: "https://docs.aws.amazon.com/systems-manager/latest/userguide/run-command.html"}
+    quiz:
+      - q: "SSM Run Command'ning SSH deploy'dan afzalligi?"
+        options: ["Tezroq", "Ochiq port va SSH kalitlarsiz, IAM bilan audit qilinadigan buyruq bajarish", "Bepul", "Oddiyroq"]
+        answer: 1
+        why: "Hujum yuzasi kichik."
+    hardcore:
+      - "Blue-green deploy: ikki target group, yangi versiyani ikkinchisiga deploy qilib, ALB listener qoidasini almashtiruvchi workflow."
+
+  - key: j3p-08-monitoring
+    kind: project
+    title: "J3 LOYIHA 8/12: Monitoring va alertlar"
+    theory: |
+      Kuzatuv: ALB 5xx va target health, ASG sog'lom instance soni, RDS CPU/ulanishlar/bo'sh joy, bot xato loglari (CloudWatch Logs metric filter) → alarmlar → SNS → Lambda → Telegram. Hammasi Terraform'da.
+    task: |
+      1) Monitoring moduli: kamida 5 ta alarm.
+      2) Bot loglaridagi "ERROR" uchun metric filter va alarm.
+      3) CloudWatch dashboard (Terraform bilan).
+      4) Har alarmni ataylab ishga tushirib tekshiring.
+    done: "5 ta alarm sinalgan va Telegram'ga keladi."
+    resources:
+      - {title: "AWS — Creating metric filters", url: "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/MonitoringLogData.html"}
+    quiz:
+      - q: "Qaysi alarm foydalanuvchi ta'sirini eng to'g'ri ko'rsatadi?"
+        options: ["CPU", "ALB 5xx foizi va healthy host soni", "Disk", "RAM"]
+        answer: 1
+        why: "Simptom asosidagi alert — sabab emas, natija."
+    hardcore:
+      - "Alarmlarga 'runbook URL' qo'shing: Telegram xabarida shu alarm uchun RUNBOOK.md bo'limiga havola bo'lsin."
+
+  - key: j3p-09-cost
+    kind: project
+    title: "J3 LOYIHA 9/12: Xarajat nazorati"
+    theory: |
+      FinOps asoslari: tag'lar bilan xarajat taqsimoti, AWS Budget Terraform bilan, ishlatilmagan vaqtda dev muhitni o'chirish (scheduled scaling yoki tunda destroy), to'g'ri o'lcham.
+    task: |
+      1) Budget va xarajat alertlari Terraform'da.
+      2) dev ASG uchun scheduled action: tunda 0, ertalab 1.
+      3) Cost Explorer'da tag bo'yicha hisobot.
+      4) README'ga haqiqiy oylik xarajat (kredit hisobidan) va optimallashtirishlar ro'yxati.
+    done: "Xarajatlar tag'lar bo'yicha ko'rinadi, dev tunda o'chadi."
+    resources:
+      - {title: "AWS — Scheduled scaling", url: "https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-scheduled-scaling.html"}
+    quiz:
+      - q: "Dev muhit xarajatini kamaytirishning eng oddiy usuli?"
+        options: ["Kattaroq instance", "Ishlatilmagan vaqtda (tun, dam olish) o'chirish", "Ko'proq region", "Reserved instance"]
+        answer: 1
+        why: "Haftaning ~65% vaqti ishlatilmaydi."
+    hardcore:
+      - "Graviton (ARM) instance'larga o'tib (multi-arch image J2'dan!), narx farqini hisoblang."
+
+  - key: j3p-10-dr
+    kind: project
+    title: "J3 LOYIHA 10/12: DR mashqi"
+    theory: |
+      Disaster Recovery mashqi: butun muhitni o'chirib, kod va backup'lardan qayta ko'tarish. RTO (vaqt) va RPO (yo'qotilgan ma'lumot) haqiqiy o'lchanadi. Bu J3 gate'ning repetitsiyasi.
+    task: |
+      1) DB'dan final snapshot oling.
+      2) `terraform destroy` (prod himoyalarini vaqtincha dev'da sinab ko'ring).
+      3) `apply` + snapshot'dan DB tiklash + ilova deploy; taymer bilan.
+      4) Natija va to'siqlarni DR-REPORT.md ga yozing; tiklash runbook'ini yangilang.
+    done: "Muhit qayta ko'tarildi, RTO va RPO o'lchandi."
+    resources:
+      - {title: "AWS — Disaster recovery options in the cloud", url: "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html"}
+    quiz:
+      - q: "DR rejasining eng muhim qismi?"
+        options: ["Hujjat", "Muntazam sinab ko'rish — sinalmagan DR rejasi ishlamaydi", "Narx", "Diagramma"]
+        answer: 1
+        why: "Haqiqiy incident'da birinchi marta sinash — xavf."
+    hardcore:
+      - "DB snapshot'larini boshqa region'ga avtomatik nusxalash (cross-region copy) va o'sha region'da tiklash mashqi."
+
+  - key: j3p-11-docs
+    kind: project
+    title: "J3 LOYIHA 11/12: Hujjatlash"
+    theory: |
+      Portfolio sifatidagi hujjat: README birinchi 30 soniyada loyihani tushuntirishi kerak — nima, nega, arxitektura, qanday ishga tushirish, natijalar (raqamlar bilan: RTO, deploy vaqti, narx).
+    task: |
+      1) README: qisqa tavsif, diagramma, texnologiyalar, "Qanday ishga tushirish" (3–5 buyruq), natijalar jadvali.
+      2) RUNBOOK.md: deploy, rollback, DR, alarmlar.
+      3) ADR (Architecture Decision Records): kamida 3 ta qaror (masalan NAT, polling/webhook, migratsiya joyi).
+      4) Do'stingizdan (yoki AI'dan) README'ni o'qib, 30 soniyada tushunganini so'rang.
+    done: "README, RUNBOOK va 3 ta ADR tayyor."
+    resources:
+      - {title: "ADR — Architecture Decision Records", url: "https://adr.github.io/"}
+    quiz:
+      - q: "ADR nima?"
+        options: ["Kod sharhi", "Muhim arxitektura qarori, uning konteksti, variantlari va oqibatlari yozilgan qisqa hujjat", "Diagramma", "Test"]
+        answer: 1
+        why: "'Nega shunday qilingan?' savoliga javob."
+    hardcore:
+      - "README'ga GitHub Actions orqali avtomatik yangilanadigan 'oxirgi deploy', 'versiya' va 'oylik narx' badge'larini qo'shing."
+
+  - key: j3p-12-gate
+    kind: project
+    title: "J3 GATE: destroy → 15 daqiqada qayta"
+    theory: |
+      Bosqich imtihoni: butun muhitni o'chirib, faqat repo va runbook bilan 15 daqiqada qayta ko'tarasiz (ilova ishlaydi, DB tiklangan, alarmlar faol). O'tsangiz — J4 (Kubernetes va Monitoring) ga tayyorsiz. Sertifikat rejasi: AWS Solutions Architect – Associate tayyorgarligini shu yerda boshlash mumkin.
+    task: |
+      1) Final snapshot → destroy.
+      2) Taymer: apply → DB tiklash → deploy → smoke test → alarmlar.
+      3) Natija ≤ 15 daqiqa bo'lmasa — sekin qadamni avtomatlashtirib qayta.
+      4) RETRO-J3.md va SAA tayyorgarlik rejasi (haftalik 1–2 soat qo'shimcha).
+    done: "15 daqiqa ichida to'liq tiklash. J3 tugadi!"
+    resources:
+      - {title: "AWS Certified Solutions Architect – Associate", url: "https://aws.amazon.com/certification/certified-solutions-architect-associate/"}
+    quiz:
+      - q: "J3 gate nimani isbotlaydi?"
+        options: ["AWS konsolini bilishni", "Infratuzilma to'liq kod sifatida takrorlanuvchan va tiklanadigan ekanini", "Ko'p resursni", "Sertifikatni"]
+        answer: 1
+        why: "IaC'ning amaliy qiymati."
+    hardcore:
+      - "Gate'ni 10 daqiqadan kam vaqtda o'ting va eng sekin bosqich (odatda RDS tiklash) uchun muqobil strategiya taklif qiling."

@@ -1,0 +1,313 @@
+# J1 · Bash scripting · 4–5-hafta (12 dars)
+lessons:
+  - key: bash-01-first
+    title: "Birinchi skript: o'zgaruvchilar va qo'shtirnoqlar"
+    theory: |
+      Skript — buyruqlar ketma-ketligi fayli. Birinchi qator shebang: `#!/usr/bin/env bash`, keyin `chmod +x script.sh` va `./script.sh`. O'zgaruvchi: `NAME="devops"` (= atrofida bo'shliq yo'q!), o'qish: `"$NAME"`.
+      Qo'shtirnoqlar: `"..."` ichida o'zgaruvchi kengayadi, `'...'` ichida yo'q. Har doim `"$VAR"` yozing — bo'shliqli qiymatlar va bo'sh o'zgaruvchilar skriptni buzmasligi uchun. `export VAR` — bola jarayonlarga uzatish; `env`, `printenv`.
+    task: |
+      1) `hello.sh`: user nomi, hostname, sana va uptime'ni chiroyli chiqarsin.
+      2) `FILE="my report.txt"; touch $FILE` va `touch "$FILE"` farqini ko'ring.
+      3) `export APP_ENV=prod` qilib, skript ichida `$APP_ENV` ni o'qing; export'siz sinab ko'ring.
+      4) `shellcheck` o'rnating va skriptni tekshiring.
+    done: "Skript ishlaydi, shellcheck ogohlantirishsiz."
+    resources:
+      - {title: "Shell Scripting Tutorial", url: "https://www.shellscript.sh/"}
+      - {title: "ShellCheck", url: "https://www.shellcheck.net/"}
+    quiz:
+      - q: "`echo '$HOME'` nima chiqaradi?"
+        options: ["/root", "$HOME so'zining o'zi", "Bo'sh qator", "Xato"]
+        answer: 1
+        why: "Bitta qo'shtirnoq ichida kengaytirish bo'lmaydi."
+      - q: "Nima uchun `$VAR` emas, `\"$VAR\"` yozish kerak?"
+        options: ["Tezroq", "Bo'shliq va bo'sh qiymatlar so'zlarga bo'linib ketmasligi uchun", "Majburiy sintaksis", "Farqi yo'q"]
+        answer: 1
+        why: "Word splitting — eng ko'p uchraydigan bash xatosi."
+    hardcore:
+      - "Skript: o'zi qaysi papkada joylashganini (`$0` va `BASH_SOURCE` orqali, symlink bo'lsa ham) aniqlab, shu papkadagi `config.env` ni yuklasin."
+
+  - key: bash-02-exit
+    title: "Exit code, shartlar va set -euo pipefail"
+    theory: |
+      Har buyruq exit code qaytaradi: 0 — muvaffaqiyat, boshqa — xato; `$?` da saqlanadi. `cmd1 && cmd2` (birinchisi muvaffaqiyatli bo'lsa), `cmd1 || cmd2` (xato bo'lsa).
+      Shart: `if [[ -f "$f" ]]; then ...; elif ...; else ...; fi`. Testlar: `-f` fayl, `-d` papka, `-z` bo'sh satr, `-n` bo'sh emas, `==`, `-eq -lt -gt` (sonlar). Production skript boshida: `set -euo pipefail` — xatoda to'xtash, aniqlanmagan o'zgaruvchi xato, pipe ichidagi xatoni ushlash.
+    task: |
+      1) `check.sh <papka>`: argument yo'q bo'lsa usage va `exit 1`; papka bo'lmasa xato; bo'lsa ichidagi fayllar soni.
+      2) `set -e` siz va bilan `false; echo davom` ni sinab ko'ring.
+      3) `set -o pipefail` siz `false | true; echo $?` va bilan solishtiring.
+      4) `mkdir -p /tmp/x && cd /tmp/x || exit 1` naqshini tushuntiring.
+    done: "Noto'g'ri argumentda skript 1 qaytaradi; pipefail farqini tushuntira olasiz."
+    resources:
+      - {title: "GNU Bash — Conditional Expressions", url: "https://www.gnu.org/software/bash/manual/html_node/Bash-Conditional-Expressions.html"}
+    quiz:
+      - q: "`set -o pipefail` bo'lmasa `false | true` ning exit code'i?"
+        options: ["1", "0", "2", "127"]
+        answer: 1
+        why: "Pipe'ning kodi oxirgi buyruqniki bo'ladi — xato yashirinadi."
+      - q: "`[[ -z \"$X\" ]]` qachon rost?"
+        options: ["X fayl bo'lsa", "X bo'sh bo'lsa", "X son bo'lsa", "Hech qachon"]
+        answer: 1
+        why: "-z — zero length."
+    hardcore:
+      - "`set -e` ning tuzoqlarini toping: `if` sharti ichida, `&&` zanjirida va funksiya ichida qachon to'xtamasligini 3 ta misol bilan ko'rsating."
+
+  - key: bash-03-loops
+    title: "Sikllar, case va massivlar"
+    theory: |
+      `for f in *.log; do ...; done`, `for i in {1..10}`, C uslubida `for ((i=0; i<5; i++))`. Faylni qatorma-qator o'qish: `while IFS= read -r line; do ...; done < file`. `case "$1" in start) ...;; stop) ...;; *) usage;; esac` — buyruq skriptlari uchun.
+      Massiv: `servers=(web1 web2 db1)`, `"${servers[@]}"`, uzunlik `${#servers[@]}`. `break`, `continue`. Fayl nomlarini `for f in $(ls)` bilan emas, glob bilan aylantiring.
+    task: |
+      1) `servers.txt` dagi har host uchun `ping -c1 -W1` qilib UP/DOWN chiqaring.
+      2) `svc.sh start|stop|status` — `case` bilan, noto'g'ri argumentda usage.
+      3) Massivdagi 3 ta URL uchun HTTP status kodini chiqaring (`curl -o /dev/null -s -w '%{http_code}'`).
+      4) Bo'shliqli fayl nomlari bilan sikl buzilmasligini sinang.
+    done: "Skriptlar bo'shliqli nomlar bilan ham to'g'ri ishlaydi."
+    resources:
+      - {title: "BashFAQ/001 — faylni qatorma-qator o'qish", url: "https://mywiki.wooledge.org/BashFAQ/001"}
+    quiz:
+      - q: "Faylni qatorma-qator o'qishning to'g'ri usuli?"
+        options: ["for line in $(cat f)", "while IFS= read -r line; do ...; done < f", "cat f | for", "read f"]
+        answer: 1
+        why: "for $(cat) bo'shliqlarda bo'linadi; while read qatorni butun saqlaydi."
+      - q: "Massivning barcha elementlari (har biri alohida so'z)?"
+        options: ["$arr", "\"${arr[@]}\"", "${arr}", "$arr[*]"]
+        answer: 1
+        why: "Qo'shtirnoqdagi [@] — har element alohida argument."
+    hardcore:
+      - "Parallel ping: 50 ta hostni bir vaqtda (`&` va `wait`) tekshirib, natijani tartib bilan chiqaradigan skript; vaqtini ketma-ket versiya bilan solishtiring."
+
+  - key: bash-04-functions
+    title: "Funksiyalar, argumentlar va getopts"
+    theory: |
+      `log() { local level=$1; shift; echo "[$(date +%T)] [$level] $*"; }` — funksiya ichida `local` o'zgaruvchilar, `$1..$9`, `$@` (barcha argumentlar), `$#` (soni), `shift`. `return N` — exit code (0–255), qiymat qaytarish uchun `echo` va `$(func)`.
+      Flaglar uchun `getopts`: `while getopts "hvd:" opt; do case $opt in d) DIR=$OPTARG;; ...`. Yaxshi CLI skriptda doim `-h` (yordam) bo'ladi.
+    task: |
+      1) `lib.sh`: `log_info`, `log_error` (stderr'ga), `die` (xabar + exit 1) funksiyalari.
+      2) `backup.sh -s <manba> -d <manzil> [-k 7] [-n]` — getopts bilan; -n dry-run.
+      3) `source lib.sh` bilan funksiyalarni ishlating.
+      4) `-h` usage chiqarsin, majburiy flag yo'q bo'lsa die.
+    done: "backup.sh flaglar bilan ishlaydi, dry-run hech narsani o'zgartirmaydi."
+    resources:
+      - {title: "Bash Hackers — getopts tutorial", url: "https://web.archive.org/web/2023/https://wiki.bash-hackers.org/howto/getopts_tutorial"}
+    quiz:
+      - q: "Funksiya ichidagi o'zgaruvchi tashqariga chiqmasligi uchun?"
+        options: ["export", "local", "readonly", "declare -x"]
+        answer: 1
+        why: "local — funksiya doirasidagi o'zgaruvchi."
+      - q: "Xato xabari qayerga yozilishi kerak?"
+        options: ["stdout", "stderr (`>&2`)", "/dev/null", "Faylga"]
+        answer: 1
+        why: "stdout natija uchun; pipe'larda xatolar natijaga aralashmasligi kerak."
+    hardcore:
+      - "backup.sh uchun bats-core bilan 4 ta test yozing: usage, yo'q papka, dry-run, rotatsiya (eski backuplar o'chishi)."
+
+  - key: bash-05-strings
+    title: "Command substitution, arifmetika va matn amallari"
+    theory: |
+      `$(cmd)` — buyruq natijasini olish (backtick'dan yaxshiroq). Arifmetika: `$(( a + b ))`, `(( i++ ))`. Satr amallari: `${#s}` uzunlik, `${s:0:5}` qism, `${f%.log}` oxiridan olib tashlash, `${f##*/}` yo'ldan fayl nomi, `${VAR:-default}` standart qiymat, `${VAR:?xato}` majburiy.
+      Here-doc: `cat <<EOF > config.ini ... EOF` — konfig fayllar generatsiyasi; `<<'EOF'` bo'lsa o'zgaruvchilar kengaymaydi.
+    task: |
+      1) `/var/log` dagi .log fayllarni `.log.bak` ga nusxalovchi sikl (`${f%.log}` bilan).
+      2) `PORT=${PORT:-8080}` naqshini skriptda ishlating.
+      3) Here-doc bilan nginx server block shablonini o'zgaruvchilar bilan generatsiya qiling.
+      4) Disk foizini olib (`df --output=pcent /`), 80 dan katta bo'lsa ogohlantirish (arifmetik solishtirish).
+    done: "Skriptlar tashqi sed/awk'siz satrlarni qayta ishlaydi."
+    resources:
+      - {title: "GNU Bash — Shell Parameter Expansion", url: "https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html"}
+    quiz:
+      - q: "`f=/var/log/app.log; echo ${f##*/}` natijasi?"
+        options: ["/var/log", "app.log", "app", "log"]
+        answer: 1
+        why: "##*/ — oxirgi / gacha hammasini olib tashlaydi (basename)."
+      - q: "`${DB_HOST:?}` nima qiladi?"
+        options: ["Standart qiymat beradi", "O'zgaruvchi bo'sh bo'lsa xato bilan to'xtaydi", "O'chiradi", "Eksport qiladi"]
+        answer: 1
+        why: "Majburiy konfiguratsiya uchun qulay."
+    hardcore:
+      - "Faqat bash parameter expansion bilan (sed/awk siz) `KEY=VALUE` formatidagi .env faylni o'qib, har qiymatni maskalab (`DB_PASS=****`) chiqaring."
+
+  - key: bash-06-debug-lab
+    kind: lab
+    title: "LAB: buzilgan skriptni tuzatish"
+    theory: |
+      Skriptni debug qilish: `bash -x script.sh` (har qatorni ko'rsatadi), `set -x`/`set +x` qismga, `PS4='+ ${LINENO}: '` qator raqami bilan, `shellcheck` statik tahlil. `trap 'echo "xato: $LINENO"' ERR` — xato qatorini ko'rsatish.
+      Odatdagi xatolar: qo'shtirnoqsiz o'zgaruvchilar, `[ ]` ichida bo'shliqlar, CRLF (Windows'dan ko'chirilgan fayl — `$'\r': command not found`), noto'g'ri shebang, PATH (cron'da boshqacha).
+    task: |
+      Lab: quyidagi skriptni `broken.sh` sifatida saqlang va tuzating:
+          #!/bin/bash
+          DIR=$1
+          if [ $DIR == "" ]; then echo usage; fi
+          for f in $(ls $DIR); do
+            size=$(du -k $DIR/$f | cut -f1)
+            if [ $size > 100 ]; then echo "$f katta"; fi
+          done
+      1) Bo'shliqli papka nomi bilan ishga tushirib xatolarni kuzating (`bash -x`).
+      2) shellcheck chiqargan har ogohlantirishni tushuntirib tuzating.
+      3) `>` nima uchun solishtirish emasligini aniqlang (100 nomli fayl paydo bo'ladi!).
+      4) `unix2dos`/`dos2unix` bilan CRLF xatosini ko'rib chiqing.
+    done: "Skript shellcheck'dan toza o'tadi va bo'shliqli nomlarda ishlaydi."
+    resources:
+      - {title: "ShellCheck wiki — xatolar ro'yxati", url: "https://www.shellcheck.net/wiki/"}
+    quiz:
+      - q: "`[ $size > 100 ]` ichida `>` nima qiladi?"
+        options: ["Sonlarni solishtiradi", "Natijani `100` nomli faylga yo'naltiradi", "Xato beradi", "Satrlarni solishtiradi"]
+        answer: 1
+        why: "[ ] ichida > — redirect. Sonlar uchun -gt yoki (( )) ishlating."
+      - q: "`$'\\r': command not found` xatosi sababi?"
+        options: ["Bash eski", "Fayl Windows (CRLF) qator oxirlari bilan saqlangan", "Ruxsat yo'q", "PATH xato"]
+        answer: 1
+        why: "dos2unix bilan tuzatiladi."
+    hardcore:
+      - "Har qanday skriptga ulanadigan `debug.sh` kutubxonasi: ERR trap'da xato qatori, buyruq va stack trace (`FUNCNAME`, `BASH_LINENO`) chiqarsin."
+
+  - key: bash-07-awk
+    title: "awk: ustunli ma'lumotlar bilan ishlash"
+    theory: |
+      awk — har qatorni maydonlarga bo'lib qayta ishlaydi: `awk '{print $1, $NF}'` (1-ustun va oxirgisi), `-F:` ajratgich, `NR` qator raqami, `NF` maydonlar soni. Shart va hisob: `awk '$9 >= 500 {c++} END {print c}'`.
+      Assotsiativ massivlar bilan guruhlash: `awk '{sum[$1]+=$10} END {for (ip in sum) print ip, sum[ip]}'`. Loglar, `ps`, `df` natijalarini tahlil qilishda eng kuchli vosita.
+    task: |
+      1) `df -h` dan faqat foizi 50 dan yuqori bo'lgan mount'larni chiqaring.
+      2) Nginx log namunasi (`/var/log/nginx/access.log` yoki internetdan sample) dan status kodlar bo'yicha sonini hisoblang.
+      3) IP bo'yicha jami yuborilgan baytlarni hisoblab, top-5.
+      4) `ps aux` dan har user ishlatayotgan jami RAM foizi.
+    done: "awk bilan guruhlash va yig'indini xotiradan yozasiz."
+    resources:
+      - {title: "GNU awk User's Guide", url: "https://www.gnu.org/software/gawk/manual/gawk.html"}
+      - {title: "Learn awk in Y minutes", url: "https://learnxinyminutes.com/docs/awk/"}
+    quiz:
+      - q: "awk'da qatorning oxirgi maydoni?"
+        options: ["$0", "$NF", "$END", "$-1"]
+        answer: 1
+        why: "NF — maydonlar soni, $NF — oxirgisi. $0 — butun qator."
+      - q: "`END {}` bloki qachon bajariladi?"
+        options: ["Har qatordan keyin", "Barcha qatorlar o'qib bo'lingandan keyin bir marta", "Boshida", "Xatoda"]
+        answer: 1
+        why: "Yakuniy natijalarni chiqarish uchun."
+    hardcore:
+      - "awk skript: nginx log'idan har daqiqa uchun so'rovlar soni va 5xx foizini chiqarib, 5xx > 5% bo'lgan daqiqalarni belgilasin."
+
+  - key: bash-08-sed-jq
+    title: "sed va jq: almashtirish va JSON"
+    theory: |
+      sed — oqimli muharrir: `sed 's/eski/yangi/g'`, `-i` faylni joyida o'zgartirish (`-i.bak` zaxira bilan), `sed -n '10,20p'` qatorlar, `sed '/^#/d'` izohlarni o'chirish. Konfiglarni avtomatik o'zgartirishda ishlatiladi.
+      jq — JSON uchun: `jq '.name'`, `.items[]`, `select(.status=="failed")`, `-r` (raw). API javoblari (GitHub, Telegram, AWS CLI) bilan ishlashda majburiy vosita.
+    task: |
+      1) sshd_config nusxasida `sed -i.bak 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/'`.
+      2) `curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r '.tag_name'`.
+      3) Shu API'dan assets nomlari va yuklab olish sonini jadval qilib chiqaring.
+      4) Telegram bot `getMe` javobidan username'ni jq bilan oling.
+    done: "Konfigni sed bilan xavfsiz (zaxira bilan) o'zgartirasiz, API javobidan kerakli maydonni olasiz."
+    resources:
+      - {title: "jq Manual", url: "https://jqlang.github.io/jq/manual/"}
+      - {title: "GNU sed manual", url: "https://www.gnu.org/software/sed/manual/sed.html"}
+    quiz:
+      - q: "`sed -i.bak` nima qiladi?"
+        options: ["Faqat ko'rsatadi", "Faylni joyida o'zgartiradi va .bak zaxira saqlaydi", "Faylni o'chiradi", "Siqadi"]
+        answer: 1
+        why: "Production'da zaxira bilan o'zgartirish xavfsizroq."
+      - q: "jq'da qo'shtirnoqsiz matn chiqarish flagi?"
+        options: ["-c", "-r", "-s", "-n"]
+        answer: 1
+        why: "-r (raw output) — skriptda o'zgaruvchiga olish uchun."
+    hardcore:
+      - "`docker inspect` (yoki biror murakkab JSON) dan jq bilan har konteyner nomi, IP va mount'larini CSV qilib chiqaring."
+
+  - key: bash-09-trap
+    title: "trap, lockfile va logging"
+    theory: |
+      `trap cleanup EXIT` — skript qanday tugasa ham (xato, Ctrl+C) tozalash; `trap '...' INT TERM`. Vaqtinchalik fayllar: `tmp=$(mktemp)` + trap'da `rm -f "$tmp"`.
+      Bir vaqtda ikki nusxa ishlamasligi uchun lock: `exec 9>/var/lock/app.lock; flock -n 9 || die "allaqachon ishlayapti"`. Cron skriptlarda bu juda muhim. Logging: vaqt belgisi, daraja, `logger` bilan syslog'ga.
+    task: |
+      1) `job.sh`: mktemp bilan vaqtinchalik fayl, trap EXIT'da o'chirsin.
+      2) flock bilan himoya qiling; ikki terminalda bir vaqtda ishga tushirib sinang.
+      3) Ctrl+C bosilganda "to'xtatildi" deb log yozib chiqsin.
+      4) Har log qatorini `logger -t job` bilan journald'ga ham yuboring.
+    done: "Ikkinchi nusxa ishga tushmaydi, Ctrl+C dan keyin vaqtinchalik fayl qolmaydi."
+    resources:
+      - {title: "man flock", url: "https://man7.org/linux/man-pages/man1/flock.1.html"}
+    quiz:
+      - q: "Cron skript avvalgisi tugamasdan qayta ishga tushsa nima bo'ladi va yechimi?"
+        options: ["Hech narsa", "Ikki nusxa bir-biriga xalaqit beradi; flock bilan lock", "Cron o'zi to'xtatadi", "Skript tezlashadi"]
+        answer: 1
+        why: "Backup kabi og'ir ishlarda overlap ma'lumotni buzishi mumkin."
+      - q: "`trap cleanup EXIT` Ctrl+C da ishlaydimi?"
+        options: ["Yo'q", "Ha, skript tugashining har qanday holatida", "Faqat xatoda", "Faqat normal tugashda"]
+        answer: 1
+        why: "EXIT pseudo-signal barcha chiqish holatlarini qamraydi (SIGKILL'dan tashqari)."
+    hardcore:
+      - "flock o'rniga `mkdir` asosidagi lock yozing va nima uchun `if [ -f lock ]; then ...; touch lock` usuli race condition'ga ega ekanini isbotlang."
+
+  - key: bash-10-cron
+    title: "cron va systemd timer"
+    theory: |
+      cron: `crontab -e`, sintaksis `m h dom mon dow cmd` (`*/5 * * * *` har 5 daqiqa, `0 3 * * *` har kuni 03:00). Tuzoqlar: cron'da PATH qisqa, environment yo'q, chiqishni log'ga yo'naltirish shart, vaqt zonasi serverniki.
+      systemd timer — zamonaviy muqobil: `.service` + `.timer` (OnCalendar=daily, Persistent=true — o'tkazib yuborilganini bajaradi), loglar journald'da, `systemctl list-timers`. Production'da timer ko'pincha qulayroq.
+    task: |
+      1) cron: har 5 daqiqada `df -h / >> ~/disk.log 2>&1`.
+      2) Ataylab `PATH` dan foydalanadigan buyruq qo'shib, cron'da ishlamasligini ko'ring va to'liq yo'l bilan tuzating.
+      3) Xuddi shu ishni `disk-report.service` + `disk-report.timer` bilan qiling.
+      4) `systemctl list-timers` va `journalctl -u disk-report` bilan tekshiring.
+    done: "Timer ishlayapti, cron PATH tuzog'ini ko'rdingiz."
+    resources:
+      - {title: "crontab.guru", url: "https://crontab.guru/"}
+      - {title: "Arch Wiki — systemd/Timers", url: "https://wiki.archlinux.org/title/Systemd/Timers"}
+    quiz:
+      - q: "`0 3 * * 1` qachon ishlaydi?"
+        options: ["Har kuni 03:00", "Har dushanba 03:00", "Har oyning 1-kuni", "Har 3 soatda"]
+        answer: 1
+        why: "Oxirgi maydon — hafta kuni, 1 = Dushanba."
+      - q: "systemd timer'dagi `Persistent=true` nima beradi?"
+        options: ["Abadiy ishlaydi", "Server o'chiq paytda o'tkazilgan ishni yonganda bajaradi", "Loglarni saqlaydi", "Xatoni yashiradi"]
+        answer: 1
+        why: "cron'da bu yo'q — o'tkazilgan ish shunchaki yo'qoladi."
+    hardcore:
+      - "Timer'ga `RandomizedDelaySec` va `OnFailure=` qo'shing: xato bo'lsa alohida `notify@%n.service` Telegram'ga xabar yuborsin."
+
+  - key: bash-11-safe
+    title: "Xavfsiz va idempotent skriptlar"
+    theory: |
+      Idempotentlik — skript 1 marta yoki 10 marta ishga tushirilsa natija bir xil: `mkdir -p`, "fayl bo'lmasa yarat", "qator yo'q bo'lsa qo'sh" (`grep -q ... || echo ... >>`). Bu Ansible va Terraform'ning asosiy g'oyasi — avval bash'da his qiling.
+      Boshqa qoidalar: dry-run rejimi, xavfli amaldan oldin tasdiq, sirlarni argument sifatida bermaslik (`ps` da ko'rinadi) — env yoki faylda, `readonly` konstantalar, aniq exit kodlar.
+    task: |
+      1) `setup.sh`: paketlar o'rnatish, user yaratish, sysctl qatori qo'shish — har qadam "allaqachon bajarilgan bo'lsa o'tkazib yubor".
+      2) 3 marta ketma-ket ishga tushiring — ikkinchi va uchinchisida hech narsa o'zgarmasligi kerak.
+      3) `--dry-run` qo'shing.
+      4) Sirni `ps aux` da ko'rinadigan argument sifatida berish xavfini sinab ko'ring.
+    done: "setup.sh 3 marta ishlaganda ham natija bir xil, 2-ishga tushirishda 'o'zgarish yo'q'."
+    resources:
+      - {title: "How to write idempotent Bash scripts", url: "https://arslan.io/2019/07/03/how-to-write-idempotent-bash-scripts/"}
+    quiz:
+      - q: "Qaysi biri idempotent?"
+        options: ["echo 'x' >> file", "grep -qx 'x' file || echo 'x' >> file", "mkdir dir", "useradd ali"]
+        answer: 1
+        why: "Qator faqat yo'q bo'lsa qo'shiladi."
+      - q: "Parolni `script.sh --pass=123` ko'rinishida berishning xavfi?"
+        options: ["Yo'q", "Boshqa userlar `ps` orqali ko'rishi mumkin", "Sekinlashadi", "Bash qo'llamaydi"]
+        answer: 1
+        why: "Argumentlar /proc/<pid>/cmdline orqali ko'rinadi."
+    hardcore:
+      - "setup.sh ni o'zgarishlar hisobotini chiqaradigan qiling (`changed=2 ok=5`) — xuddi Ansible kabi."
+
+  - key: bash-12-project
+    kind: project
+    title: "LOYIHA: Server health-check toolkit"
+    theory: |
+      Modul yakuni: bash bilimlaringizni haqiqiy foydali vositaga aylantiramiz. Bu toolkit keyingi oylarda o'z serveringizni kuzatib turadi va monitoring moduliga (Prometheus) qadar asosiy "alerting" tizimingiz bo'ladi.
+    task: |
+      `server-toolkit` repo:
+      1) `health.sh`: CPU load, RAM, disk, inode, top-5 jarayon, failed systemd unitlar, SSL muddati (ixtiyoriy) — rangli hisobot.
+      2) Chegara oshsa (disk > 80%, failed unit, load > nproc) — Telegram'ga alert (token .env'da, 600).
+      3) flock, trap, logging, `--dry-run`, `-h`.
+      4) systemd timer har 15 daqiqada.
+      5) README: o'rnatish, misol natija, skrinshot. shellcheck CI shart emas (keyin qo'shasiz).
+    done: "Alert haqiqiy Telegram'ga keldi, repo GitHub'da."
+    resources:
+      - {title: "Telegram Bot API — sendMessage", url: "https://core.telegram.org/bots/api#sendmessage"}
+      - {title: "roadmap.sh — DevOps Projects", url: "https://roadmap.sh/devops/projects"}
+    quiz:
+      - q: "Alert spam bo'lmasligi uchun nima qilish kerak?"
+        options: ["Hech narsa", "Bir xil alertni ma'lum vaqt ichida qayta yubormaslik (holatni saqlash)", "Alertni o'chirish", "Har daqiqa yuborish"]
+        answer: 1
+        why: "Alert fatigue — doim kelgan alert e'tiborsiz qoladi."
+    hardcore:
+      - "Toolkit'ga `install.sh` qo'shing: istalgan Ubuntu serverga 1 buyruqda idempotent o'rnatilsin (timer, .env shabloni, papkalar)."

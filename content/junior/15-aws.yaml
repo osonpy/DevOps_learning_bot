@@ -1,0 +1,617 @@
+# J3 · AWS asoslari · 27–30-hafta (24 dars)
+# MUHIM: AWS akkauntini shu modul boshlanishidan oldin oching (6 oylik Free plan shu modul va Terraform'ni qamrasin).
+# Har darsdan keyin resurslarni o'chiring!
+lessons:
+  - key: aws-01-account
+    title: "Cloud tushunchalari, akkaunt va xavfsizlik"
+    theory: |
+      Cloud modellari: IaaS (EC2 — server), PaaS (RDS, Elastic Beanstalk), SaaS. Global infratuzilma: region (masalan eu-central-1, me-central-1 — UAE, me-south-1 — Bahrain), har region'da bir nechta Availability Zone (alohida data-markazlar). Shared responsibility: AWS — infratuzilma xavfsizligi, siz — konfiguratsiya, ma'lumot, kirish huquqlari.
+      Birinchi kun majburiyatlari: root akkauntga MFA, root bilan ishlamaslik, billing alarm/budget, xarajatlarni kuzatish.
+    task: |
+      1) AWS akkaunt oching (Free plan), root'ga MFA yoqing.
+      2) AWS Budgets: oylik 5 dollar budget va email ogohlantirish.
+      3) Billing'da Free Tier usage alertlarini yoqing.
+      4) Regionlarni ko'rib chiqing: qaysi biri sizga va Saudiya bozoriga yaqin — jurnalga.
+    done: "MFA yoqilgan, budget alert sozlangan."
+    resources:
+      - {title: "AWS — Shared Responsibility Model", url: "https://aws.amazon.com/compliance/shared-responsibility-model/"}
+      - {title: "AWS — Getting started with AWS Budgets", url: "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-create.html"}
+    quiz:
+      - q: "Shared responsibility modelida xavfsizlik guruhi (security group) sozlamasi kimning javobgarligi?"
+        options: ["AWS", "Mijoz (siz)", "Ikkalasi ham emas", "Data-markaz"]
+        answer: 1
+        why: "Cloud ICHIDAGI xavfsizlik — mijozniki."
+      - q: "Availability Zone nima?"
+        options: ["Region nomi", "Region ichidagi alohida, mustaqil data-markaz(lar)", "CDN nuqtasi", "Narx toifasi"]
+        answer: 1
+        why: "Yuqori ishonchlilik uchun bir nechta AZ ishlatiladi."
+    hardcore:
+      - "AWS Cost Anomaly Detection'ni yoqing va kutilmagan xarajat bo'lsa Telegram'ga xabar keladigan qiling (SNS + Lambda yoki email-to-Telegram)."
+
+  - key: aws-02-iam-basics
+    title: "IAM 1: users, groups, roles, policies"
+    theory: |
+      IAM — kim nimaga kira oladi. User (odam yoki eski uslubdagi dastur), Group (userlar to'plami), Role (vaqtinchalik huquq — EC2, Lambda yoki OIDC orqali GitHub oladi), Policy (JSON: Effect, Action, Resource, Condition). Default — hammasi taqiqlangan; aniq Deny har doim Allow'dan ustun.
+      Amaliy qoida: kundalik ish uchun admin user (MFA bilan) yoki IAM Identity Center; dasturlar uchun roles, uzoq muddatli access key'lardan qoching.
+    task: |
+      1) `admins` group (AdministratorAccess) va o'zingiz uchun user, MFA bilan; root'dan chiqing.
+      2) Faqat bitta S3 bucket'ni o'qiy oladigan custom policy yozing (JSON).
+      3) Policy simulator bilan tekshiring.
+      4) Policy elementlarini (Effect/Action/Resource/Condition) jurnalga tushuntiring.
+    done: "Root ishlatilmaydi, custom policy simulator'da to'g'ri ishlaydi."
+    resources:
+      - {title: "AWS IAM — Policies and permissions", url: "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html"}
+      - {title: "GfG — IAM in AWS", url: "https://www.geeksforgeeks.org/devops/identity-and-access-management-iam-in-amazon-web-services-aws/"}
+    quiz:
+      - q: "Allow va aniq Deny to'qnashsa?"
+        options: ["Allow g'olib", "Deny har doim g'olib", "Oxirgisi g'olib", "Xato"]
+        answer: 1
+        why: "Explicit deny — eng kuchli."
+      - q: "EC2'dagi ilova S3'ga kirishi uchun eng to'g'ri usul?"
+        options: ["Access key'ni kodga yozish", "EC2 instance role (IAM role)", "Root kalit", ".env'da kalit"]
+        answer: 1
+        why: "Vaqtinchalik avtomatik yangilanadigan credentials."
+    hardcore:
+      - "Condition bilan policy: faqat MFA bilan kirgan va faqat sizning IP'ingizdan kelgan so'rovlarga EC2 to'xtatish huquqini bering."
+
+  - key: aws-03-iam-cli
+    title: "IAM 2: least privilege va AWS CLI"
+    theory: |
+      AWS CLI v2: `aws configure` (access key — faqat shaxsiy o'rganish uchun) yoki `aws configure sso` (Identity Center — tavsiya). Profillar (`--profile`), `aws sts get-caller-identity` — "men kimman?". Region `AWS_REGION` yoki config'da.
+      Least privilege: avval kerakli minimumni bering, keyin IAM Access Analyzer va "last accessed" ma'lumotlari bilan keraksiz huquqlarni olib tashlang.
+    task: |
+      1) AWS CLI v2 o'rnating, Identity Center (yoki MFA'li user) bilan profil sozlang.
+      2) `aws sts get-caller-identity`, `aws ec2 describe-regions --output table`.
+      3) `--query` (JMESPath) bilan faqat region nomlarini chiqaring.
+      4) IAM Access Analyzer'ni yoqing va natijalarni ko'ring.
+    done: "CLI ishlaydi, `--query` bilan kerakli maydonni olasiz."
+    resources:
+      - {title: "AWS CLI — Getting started", url: "https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html"}
+      - {title: "AWS CLI — Filter output (--query)", url: "https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-filter.html"}
+    quiz:
+      - q: "Hozir qaysi identity bilan ishlayotganingizni bilish?"
+        options: ["aws whoami", "aws sts get-caller-identity", "aws iam list-users", "aws configure list"]
+        answer: 1
+        why: "Account ID va ARN qaytaradi."
+      - q: "Least privilege'ni amalda qanday qo'llash?"
+        options: ["Hammaga admin", "Minimal huquq bilan boshlab, ishlatilmaganlarini muntazam olib tashlash", "Hech kimga huquq bermaslik", "Faqat root"]
+        answer: 1
+        why: "Access Analyzer va last-accessed yordam beradi."
+    hardcore:
+      - "Access key'larni umuman ishlatmasdan faqat Identity Center qisqa muddatli credentials bilan ishlang va `~/.aws/credentials` faylida hech narsa yo'qligini isbotlang."
+
+  - key: aws-04-vpc1
+    title: "VPC 1: CIDR, subnetlar, route table, IGW"
+    theory: |
+      VPC — AWS'dagi xususiy tarmog'ingiz (masalan 10.0.0.0/16). Subnet — bitta AZ'dagi qism: public (route table'da 0.0.0.0/0 → Internet Gateway) va private (internetdan to'g'ridan-to'g'ri kirib bo'lmaydi). Route table — subnetdan chiquvchi trafik yo'nalishi.
+      J1 tarmoq modulidagi CIDR va routing bilimingiz shu yerda to'g'ridan-to'g'ri ishlaydi. Har region'da default VPC bor — production uchun o'zingiznikini yarating.
+    task: |
+      1) Konsolda 10.0.0.0/16 VPC, 2 AZ'da 2 public va 2 private subnet (/24).
+      2) Internet Gateway, public route table (0.0.0.0/0 → IGW).
+      3) Diagramma chizing: VPC, subnetlar, route table'lar.
+      4) Hammasini CLI bilan `describe-*` qilib tekshiring.
+    done: "VPC dizayni diagramma bilan, public/private farqini tushuntira olasiz."
+    resources:
+      - {title: "AWS VPC — How it works", url: "https://docs.aws.amazon.com/vpc/latest/userguide/how-it-works.html"}
+    quiz:
+      - q: "Subnetni 'public' qiladigan narsa?"
+        options: ["Nomi", "Route table'da 0.0.0.0/0 → Internet Gateway yo'li", "Katta CIDR", "Security group"]
+        answer: 1
+        why: "Public — routing xususiyati."
+      - q: "Bitta subnet nechta AZ'da bo'lishi mumkin?"
+        options: ["Ko'p", "Faqat bitta", "Ikkita", "Region bo'yicha hammasi"]
+        answer: 1
+        why: "Yuqori ishonchlilik uchun har AZ'da alohida subnet."
+    hardcore:
+      - "VPC Flow Logs'ni CloudWatch'ga yoqing va bitta EC2'ga kelgan rad etilgan (REJECT) ulanishlarni toping."
+
+  - key: aws-05-vpc2
+    title: "VPC 2: NAT Gateway, security group va NACL"
+    theory: |
+      Private subnetdagi server internetga (yangilanishlar uchun) NAT Gateway orqali chiqadi — NAT Gateway soatbay va trafik uchun pullik (o'rganishda eng ko'p esdan chiqadigan xarajat!). Arzon muqobil — NAT instance yoki VPC endpoints.
+      Security Group — instance darajasidagi stateful firewall (javob trafiki avtomatik ruxsat, faqat Allow qoidalar, boshqa SG'ga havola qilish mumkin). NACL — subnet darajasidagi stateless qoidalar (Allow va Deny, ikkala yo'nalish ham).
+    task: |
+      1) NAT Gateway'ning narxini rasmiy narx sahifasidan toping va oylik xarajatni hisoblang.
+      2) SG'lar: `web-sg` (80/443 hammadan, 22 faqat sizning IP), `db-sg` (5432 faqat web-sg'dan — SG havolasi bilan).
+      3) NACL bilan bitta IP'ni subnet darajasida bloklang.
+      4) Darsdan keyin NAT Gateway'ni o'chiring (agar yaratgan bo'lsangiz)!
+    done: "SG'lar SG havolasi bilan, NAT narxini bilasiz."
+    resources:
+      - {title: "AWS — Security groups", url: "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html"}
+      - {title: "AWS — NAT gateway pricing", url: "https://aws.amazon.com/vpc/pricing/"}
+    quiz:
+      - q: "Security Group va NACL farqi?"
+        options: ["Bir xil", "SG — instance, stateful, faqat allow; NACL — subnet, stateless, allow va deny", "NACL — instance", "SG stateless"]
+        answer: 1
+        why: "Ko'pincha SG yetarli."
+      - q: "DB faqat web serverlardan ulanishi uchun eng yaxshi qoida?"
+        options: ["0.0.0.0/0 dan 5432", "db-sg'da 5432 manbai = web-sg", "Web server IP'lari", "NACL"]
+        answer: 1
+        why: "IP'lar o'zgarsa ham ishlaydi."
+    hardcore:
+      - "NAT Gateway o'rniga S3 uchun Gateway VPC Endpoint qo'shing va private subnetdagi EC2'dan S3'ga internet'siz kirishni isbotlang."
+
+  - key: aws-06-lab
+    kind: lab
+    title: "LAB: EC2'ga ulanib bo'lmayapti"
+    theory: |
+      EC2'ga SSH/HTTP ulanmasa tekshirish tartibi: 1) instance holati va status check'lar; 2) public IP bormi; 3) subnet route table'da IGW; 4) security group inbound qoidasi (port va manba IP); 5) NACL (ikkala yo'nalish!); 6) instance ichida servis tinglayaptimi va OS firewall; 7) to'g'ri kalit va user (ubuntu, ec2-user). Reachability Analyzer va EC2 Instance Connect / SSM Session Manager yordam beradi.
+    task: |
+      Public subnetda t3.micro (yoki Free plan mos turi) EC2 ishga tushiring, so'ng har holatni yaratib, yuqoridagi tartib bilan toping:
+      1) SG'dan 22-portni olib tashlang.
+      2) Route table'dan IGW yo'lini olib tashlang.
+      3) NACL'da outbound ephemeral portlarni yoping.
+      4) Har biri uchun runbook yozuvi. Oxirida instance'ni terminate qiling!
+    done: "3 ta ulanish muammosini tartib bilan topdingiz, instance o'chirilgan."
+    resources:
+      - {title: "AWS — Troubleshoot connecting to your instance", url: "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html"}
+    quiz:
+      - q: "NACL'da inbound 22 ochiq, lekin SSH ishlamaydi. Ehtimoliy sabab?"
+        options: ["SG", "NACL stateless — javob uchun outbound ephemeral portlar (1024-65535) yopiq", "DNS", "Kalit"]
+        answer: 1
+        why: "SG stateful, NACL esa yo'q."
+      - q: "SSH kalitsiz va 22-portsiz EC2'ga kirish usuli?"
+        options: ["Imkonsiz", "SSM Session Manager (IAM role bilan)", "Telnet", "RDP"]
+        answer: 1
+        why: "Port ochmasdan, IAM bilan audit qilinadigan kirish."
+    hardcore:
+      - "Port 22'ni butunlay yopib, faqat SSM Session Manager orqali kiradigan EC2 sozlang va `ssh` ni SSM orqali proxy qiling (`ProxyCommand aws ssm start-session`)."
+
+  - key: aws-07-ec2
+    title: "EC2: AMI, instance turlari, user data"
+    theory: |
+      EC2 — virtual server. AMI — OS shabloni; instance type — CPU/RAM (t — burstable, m — umumiy, c — CPU, r — RAM; g — Graviton ARM, arzonroq). Key pair, SG, subnet, IAM role. User data — birinchi ishga tushishda bajariladigan skript (cloud-init) — J1'dagi bootstrap aynan shu yerda ishlaydi.
+      Narx modellari: On-Demand, Savings Plans/Reserved (uzoq muddat), Spot (arzon, lekin to'xtatilishi mumkin).
+    task: |
+      1) User data bilan EC2 ishga tushiring: nginx o'rnatib, hostname'ni sahifaga yozsin.
+      2) Brauzerda public IP orqali oching.
+      3) Instance metadata: ichidan `curl -s http://169.254.169.254/latest/meta-data/` (IMDSv2 token bilan).
+      4) Instance'ni stop va start qiling — public IP o'zgardimi? Terminate qiling.
+    done: "User data bilan avtomatik sozlangan server ishladi va o'chirildi."
+    resources:
+      - {title: "AWS — EC2 user data", url: "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html"}
+      - {title: "GfG — What is EC2", url: "https://www.geeksforgeeks.org/cloud-computing/what-is-elastic-compute-cloud-ec2/"}
+    quiz:
+      - q: "User data qachon bajariladi (default)?"
+        options: ["Har reboot'da", "Instance birinchi marta ishga tushganda", "Har soatda", "Qo'lda"]
+        answer: 1
+        why: "cloud-init orqali."
+      - q: "Stop/start qilinganda (Elastic IP'siz) public IP?"
+        options: ["Saqlanadi", "O'zgaradi", "Yo'qoladi abadiy", "IPv6 bo'ladi"]
+        answer: 1
+        why: "Doimiy IP uchun Elastic IP (bog'lanmaganda pullik)."
+    hardcore:
+      - "IMDSv1'ni o'chirib faqat IMDSv2'ni majburiy qiling va nima uchun bu SSRF hujumlaridan himoya qilishini tushuntiring."
+
+  - key: aws-08-ebs
+    title: "EBS, snapshot va o'z AMI'ingiz"
+    theory: |
+      EBS — EC2'ga ulanadigan blok disk (bitta AZ'da). Turlari: gp3 (umumiy SSD, default tanlov), io2 (yuqori IOPS), st1/sc1 (HDD). Snapshot — EBS nusxasi S3'da (inkremental), boshqa AZ/region'ga ko'chirish mumkin. AMI — snapshot'dan yaratilgan server shabloni: "golden image".
+      Data Lifecycle Manager — snapshot'larni avtomatik yaratish va eskisini o'chirish.
+    task: |
+      1) EC2'ga qo'shimcha 1 GB gp3 volume ulang, ichida ext4 yaratib mount qiling (J1'dagi disk bilimi!).
+      2) Snapshot oling, volume'ni o'chirib snapshot'dan tiklang.
+      3) Sozlangan EC2'dan AMI yarating va undan yangi instance ishga tushiring.
+      4) Barcha volume, snapshot va AMI'larni o'chiring (pullik!).
+    done: "Snapshot'dan tiklash va AMI'dan yangi server ishladi; hammasi tozalangan."
+    resources:
+      - {title: "AWS — Amazon EBS volumes", url: "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volumes.html"}
+    quiz:
+      - q: "EBS volume boshqa AZ'dagi EC2'ga to'g'ridan-to'g'ri ulanadimi?"
+        options: ["Ha", "Yo'q — snapshot orqali boshqa AZ'da yangi volume yaratiladi", "Faqat io2", "Faqat region ichida"]
+        answer: 1
+        why: "EBS AZ'ga bog'langan."
+      - q: "Umumiy maqsadlar uchun default EBS turi?"
+        options: ["io2", "gp3", "st1", "magnetic"]
+        answer: 1
+        why: "Narx/unumdorlik balansi."
+    hardcore:
+      - "Packer bilan AMI'ni kod sifatida quring: Ubuntu + Docker + base hardening, keyin shu AMI'dan EC2 ishga tushiring."
+
+  - key: aws-09-s3
+    title: "S3: bucket, versioning, lifecycle, policies"
+    theory: |
+      S3 — obyekt saqlash: bucket (global unikal nom) → obyektlar (kalit = yo'l). Storage class'lar: Standard, Standard-IA, Glacier (arxiv, arzon). Versioning — o'chirilgan/qayta yozilgan obyektni tiklash; lifecycle — eski versiyalar va obyektlarni avtomatik arzon class'ga ko'chirish yoki o'chirish.
+      Xavfsizlik: Block Public Access (default yoqilgan, shunday qoldiring), bucket policy, shifrlash (default SSE-S3). Ko'p ma'lumot oqishi — ochiq qolgan S3 bucket'lardan.
+    task: |
+      1) Bucket yarating (Block Public Access yoqilgan), versioning yoqing.
+      2) `aws s3 cp`, `aws s3 sync` bilan fayllar; faylni o'chirib, eski versiyadan tiklang.
+      3) Lifecycle: 30 kundan keyin IA'ga, eski versiyalarni 60 kundan keyin o'chirish.
+      4) restic backup'ingizni S3'ga yo'naltiring (alohida IAM user/role, faqat shu bucket'ga huquq).
+    done: "Backup'lar S3'da (offsite!), versioning bilan tiklash ishladi."
+    resources:
+      - {title: "AWS — Amazon S3 User Guide", url: "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html"}
+      - {title: "restic — Amazon S3 backend", url: "https://restic.readthedocs.io/en/stable/030_preparing_a_new_repo.html#amazon-s3"}
+    quiz:
+      - q: "S3 versioning nima beradi?"
+        options: ["Tezlik", "O'chirilgan yoki qayta yozilgan obyektning eski versiyasini tiklash", "Arzonlik", "Shifrlash"]
+        answer: 1
+        why: "Ransomware va tasodifiy o'chirishdan himoya."
+      - q: "Block Public Access'ni nima uchun yoqilgan qoldirish kerak?"
+        options: ["Majburiy", "Tasodifan bucket'ni hammaga ochib qo'yishning oldini oladi", "Tezlik", "Arzon"]
+        answer: 1
+        why: "Ma'lumot oqishining eng ko'p sababi."
+    hardcore:
+      - "S3 Object Lock (governance mode) bilan backup'larni ma'lum muddat o'chirib bo'lmaydigan qiling va nima uchun bu ransomware'dan himoya ekanini tushuntiring."
+
+  - key: aws-10-static
+    title: "S3 static sayt va CloudFront"
+    theory: |
+      Statik sayt (HTML, JS, rasmlar) uchun server shart emas: S3 + CloudFront (CDN, HTTPS, keshlash, foydalanuvchiga yaqin edge'lar). Bucket ochiq bo'lmaydi — CloudFront Origin Access Control orqali o'qiydi.
+      Kesh: TTL'lar, `Cache-Control` headerlari, yangi deploy'da invalidation (`aws cloudfront create-invalidation`). ACM sertifikati CloudFront uchun us-east-1 da bo'lishi kerak.
+    task: |
+      1) Oddiy statik sayt (portfolio sahifangiz!) ni private S3 bucket'ga yuklang.
+      2) CloudFront distribution + OAC, faqat CloudFront orqali ochilishini tekshiring.
+      3) Faylni yangilab, invalidation qiling.
+      4) `curl -I` bilan `X-Cache` headerini ko'ring (Hit/Miss).
+    done: "Sayt CloudFront orqali HTTPS bilan ochiladi, S3 to'g'ridan-to'g'ri yopiq."
+    resources:
+      - {title: "AWS — Restricting access to an S3 origin (OAC)", url: "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html"}
+    quiz:
+      - q: "CloudFront bilan S3 bucket'ni ochiq qilish kerakmi?"
+        options: ["Ha", "Yo'q — Origin Access Control orqali faqat CloudFront o'qiydi", "Faqat o'qish uchun", "Ixtiyoriy"]
+        answer: 1
+        why: "Bucket private qoladi."
+      - q: "Yangi versiyani darhol ko'rsatish uchun CloudFront'da?"
+        options: ["Kutish", "Invalidation yoki fayl nomida versiya (hash)", "Distribution'ni o'chirish", "S3'ni o'chirish"]
+        answer: 1
+        why: "Fayl nomida hash — eng yaxshi amaliyot."
+    hardcore:
+      - "Portfolio saytingiz uchun GitHub Actions: push'da OIDC bilan AWS'ga kirib, `s3 sync` va invalidation qiladigan workflow."
+
+  - key: aws-11-rds
+    title: "RDS PostgreSQL"
+    theory: |
+      RDS — boshqariladigan DB: patching, backup'lar (avtomatik + snapshot), Multi-AZ (zaxira nusxa boshqa AZ'da, avtomatik failover), read replica. Siz: o'lcham, parametrlar, xavfsizlik, ulanishlar. DB subnet group (private subnetlar), SG (faqat ilova SG'idan), `publicly accessible: No`.
+      Free plan'ga mos kichik instance turini tanlang va darsdan keyin o'chiring yoki to'xtating.
+    task: |
+      1) Private subnetlarda DB subnet group, db-sg (5432 faqat web-sg'dan).
+      2) Kichik RDS PostgreSQL (public access yo'q), avtomatik backup 1 kun.
+      3) Public subnetdagi EC2'dan psql bilan ulaning.
+      4) Manual snapshot oling; RDS'ni o'chiring (final snapshot'siz yoki bilan — farqini tushuning).
+    done: "EC2'dan RDS'ga ulanish ishladi, keyin hammasi o'chirildi."
+    resources:
+      - {title: "AWS — Getting started with RDS for PostgreSQL", url: "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_GettingStarted.CreatingConnecting.PostgreSQL.html"}
+    quiz:
+      - q: "RDS Multi-AZ asosan nima uchun?"
+        options: ["O'qishni tezlashtirish", "Yuqori ishonchlilik — AZ ishdan chiqsa avtomatik failover", "Arzonlik", "Backup o'rniga"]
+        answer: 1
+        why: "O'qishni masshtablash uchun read replica."
+      - q: "Production RDS uchun `publicly accessible`?"
+        options: ["Yes", "No", "Faqat test'da Yes", "Farqi yo'q"]
+        answer: 1
+        why: "DB faqat ichki tarmoqdan."
+    hardcore:
+      - "RDS parol o'rniga IAM database authentication bilan EC2'dan ulaning (vaqtinchalik token)."
+
+  - key: aws-12-lab
+    kind: lab
+    title: "LAB: RDS'ga ulanib bo'lmayapti"
+    theory: |
+      DB ulanish muammolari: endpoint DNS (`dig` — private IP qaytaryaptimi?), SG (manba — ilova SG'i), NACL, subnet group, DB ishlab turibdimi, user/parol, SSL talab qilinadimi (`rds.force_ssl`), max_connections. Tekshirish: `nc -zv endpoint 5432` → psql → loglar (CloudWatch'da RDS loglari).
+    task: |
+      Kichik RDS + EC2 bilan holatlarni yarating va toping:
+      1) db-sg manbasini noto'g'ri SG'ga o'zgartiring.
+      2) Noto'g'ri parol (va `nc` muvaffaqiyatli bo'lsa ham psql yiqilishi).
+      3) Lokal kompyuterdan to'g'ridan-to'g'ri ulanishga urining — nega ishlamaydi va qanday xavfsiz ulanish mumkin (SSH tunnel EC2 orqali yoki SSM port forwarding).
+      4) Runbook yozuvi; hammasini o'chiring.
+    done: "3 ta holat topildi; lokal kompyuterdan tunnel orqali ulandingiz."
+    resources:
+      - {title: "AWS — Troubleshooting connection to RDS", url: "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_Troubleshooting.html#CHAP_Troubleshooting.Connecting"}
+    quiz:
+      - q: "`nc -zv endpoint 5432` muvaffaqiyatli, psql 'password authentication failed'. Qatlam?"
+        options: ["Tarmoq", "Autentifikatsiya (L7) — tarmoq joyida", "DNS", "SG"]
+        answer: 1
+        why: "TCP ulanish o'rnatildi."
+      - q: "Private RDS'ga lokal kompyuterdan xavfsiz kirish?"
+        options: ["Public qilish", "Bastion/EC2 orqali SSH tunnel yoki SSM port forwarding", "SG'ni 0.0.0.0/0", "Imkonsiz"]
+        answer: 1
+        why: "J1'dagi ssh -L naqshi."
+    hardcore:
+      - "SSM Session Manager port forwarding (`AWS-StartPortForwardingSessionToRemoteHost`) bilan SSH'siz, port ochmasdan RDS'ga lokal ulaning."
+
+  - key: aws-13-elb
+    title: "ELB: Application Load Balancer"
+    theory: |
+      ALB — L7 load balancer: listener (80/443), qoidalar (yo'l, host bo'yicha), target group (EC2, IP, Lambda) va health check'lar. TLS ALB'da tugaydi (ACM sertifikati bepul). Sog'lom bo'lmagan target'ga trafik yuborilmaydi.
+      Naqsh: internet → ALB (public subnetlar) → EC2'lar (private subnetlar) → RDS. EC2'larga to'g'ridan-to'g'ri kirish yo'q — faqat ALB SG'idan.
+    task: |
+      1) 2 ta EC2 (user data bilan nginx + hostname) ikki AZ'da.
+      2) Target group (health check /), ALB, listener 80.
+      3) Bir necha marta yangilab, ikki hostname almashinuvini ko'ring.
+      4) Bitta instance'da nginx'ni to'xtatib, health check unhealthy va trafik faqat sog'lomiga ketishini kuzating. Hammasini o'chiring.
+    done: "Bitta instance o'chganda sayt ishlashda davom etdi."
+    resources:
+      - {title: "AWS — What is an Application Load Balancer?", url: "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html"}
+      - {title: "GfG — Elastic Load Balancer in AWS", url: "https://www.geeksforgeeks.org/machine-learning/elastic-load-balancer-in-aws/"}
+    quiz:
+      - q: "ALB qaysi qatlamda ishlaydi?"
+        options: ["L3", "L4", "L7", "L2"]
+        answer: 2
+        why: "HTTP yo'l va host bo'yicha marshrutlash. NLB — L4."
+      - q: "EC2'lar faqat ALB'dan trafik olishi uchun?"
+        options: ["Public IP olib tashlash faqat", "EC2 SG'ida manba = ALB SG'i", "NACL", "Route table"]
+        answer: 1
+        why: "SG havolasi."
+    hardcore:
+      - "ALB'da path-based routing: `/api/*` bir target group'ga, `/` boshqasiga; va host-based routing ikki subdomen uchun."
+
+  - key: aws-14-asg
+    title: "Auto Scaling Groups va launch templates"
+    theory: |
+      Launch template — EC2 shabloni (AMI, turi, SG, user data, IAM role). Auto Scaling Group — min/desired/max instance soni, AZ'lar bo'yicha taqsimlash, health check (EC2 yoki ELB), o'lgan instance'ni almashtirish (self-healing), scaling siyosatlari (masalan CPU 60% target tracking).
+      ASG + ALB — klassik masshtablanuvchi veb arxitektura. Kubernetes'dan oldin bu "orkestratsiya"ning cloud versiyasi.
+    task: |
+      1) Launch template (user data bilan).
+      2) ASG: min 1, desired 2, max 3, ALB target group'ga ulangan, ELB health check.
+      3) Bitta instance'ni qo'lda terminate qiling — ASG yangisini ko'tarishini kuzating.
+      4) CPU stress (`stress-ng`) bilan scale-out'ni ko'ring. Keyin ASG'ni 0 ga tushirib o'chiring.
+    done: "ASG o'lgan instance'ni avtomatik almashtirdi."
+    resources:
+      - {title: "AWS — What is Amazon EC2 Auto Scaling?", url: "https://docs.aws.amazon.com/autoscaling/ec2/userguide/what-is-amazon-ec2-auto-scaling.html"}
+    quiz:
+      - q: "ASG'da ELB health check yoqilsa nima o'zgaradi?"
+        options: ["Hech narsa", "ALB unhealthy deb topgan instance ham almashtiriladi (faqat EC2 o'lganda emas)", "Tezlik", "Narx"]
+        answer: 1
+        why: "Ilova darajasidagi nosozlik ham hisobga olinadi."
+      - q: "Target tracking siyosati nima?"
+        options: ["Qo'lda masshtablash", "Metrikani (masalan CPU 60%) maqsadli qiymatda ushlab turish uchun avtomatik masshtablash", "Jadval bo'yicha", "Faqat kamaytirish"]
+        answer: 1
+        why: "Eng oddiy va ko'p ishlatiladigan siyosat."
+    hardcore:
+      - "Instance refresh bilan ASG'dagi barcha instance'larni yangi AMI'ga rolling tarzda almashtiring va ALB orqali uzilish bo'lmaganini isbotlang."
+
+  - key: aws-15-route53
+    title: "Route 53 va ACM sertifikatlari"
+    theory: |
+      Route 53 — AWS DNS: hosted zone, yozuvlar (A, CNAME, Alias — AWS resurslariga, masalan ALB, zone apex'da ham ishlaydi), routing siyosatlari (simple, weighted — canary, failover, latency), health check'lar.
+      ACM — bepul TLS sertifikatlari AWS xizmatlari (ALB, CloudFront) uchun, DNS validatsiya bilan avtomatik yangilanadi. Domen boshqa joyda bo'lsa, NS yozuvlarini Route 53'ga yo'naltirish yoki faqat kerakli yozuvlarni qo'shish mumkin.
+    task: |
+      1) (Domen bo'lsa) subdomen uchun hosted zone, NS delegatsiyasi.
+      2) ACM sertifikati, DNS validatsiya.
+      3) ALB'ga HTTPS listener (ACM bilan), HTTP → HTTPS redirect.
+      4) Alias A yozuvi subdomen → ALB. Domen bo'lmasa — nazariy diagramma va narxlar bilan reja yozing.
+    done: "https://subdomen ALB orqali ochiladi (yoki batafsil reja yozilgan)."
+    resources:
+      - {title: "AWS — Route 53 Developer Guide", url: "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/Welcome.html"}
+      - {title: "AWS — ACM DNS validation", url: "https://docs.aws.amazon.com/acm/latest/userguide/dns-validation.html"}
+    quiz:
+      - q: "Zone apex (example.com) uchun ALB'ga ko'rsatish?"
+        options: ["CNAME", "Alias A yozuvi", "MX", "TXT"]
+        answer: 1
+        why: "Apex'da CNAME bo'lmaydi; Alias — Route 53 xususiyati."
+      - q: "Weighted routing nima uchun ishlatiladi?"
+        options: ["Xavfsizlik", "Trafikni foiz bo'yicha bo'lish — masalan yangi versiyaga 10% (canary)", "Keshlash", "Shifrlash"]
+        answer: 1
+        why: "Asta-sekin reliz."
+    hardcore:
+      - "Failover routing: asosiy ALB health check'i yiqilsa trafik S3'dagi statik 'texnik ishlar' sahifasiga o'tadigan qiling."
+
+  - key: aws-16-cloudwatch
+    title: "CloudWatch: metrikalar, loglar, alarmlar"
+    theory: |
+      CloudWatch Metrics — AWS xizmatlarining metrikalari (EC2 CPU, ALB so'rovlar va 5xx, RDS ulanishlar); RAM va disk uchun CloudWatch Agent kerak. Logs — log group'lar, Logs Insights so'rovlari. Alarm — metrika chegarani oshsa SNS (email, Lambda → Telegram).
+      Narx: custom metrikalar va log hajmi pullik — retention'ni sozlang.
+    task: |
+      1) EC2'da CloudWatch Agent: RAM, disk va nginx access loglari.
+      2) Alarm: CPU > 70% 5 daqiqa → SNS email.
+      3) Logs Insights so'rovi: oxirgi soatdagi 5xx'lar soni.
+      4) Log group retention'ni 7 kunga qo'ying. Darsdan keyin resurslarni o'chiring.
+    done: "Stress test bilan alarm email keldi."
+    resources:
+      - {title: "AWS — CloudWatch User Guide", url: "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/WhatIsCloudWatch.html"}
+      - {title: "GfG — Introduction to Amazon CloudWatch", url: "https://www.geeksforgeeks.org/cloud-computing/introduction-to-amazon-cloudwatch/"}
+    quiz:
+      - q: "EC2 RAM foydalanishini CloudWatch'da ko'rish uchun?"
+        options: ["Default bor", "CloudWatch Agent o'rnatish kerak", "Imkonsiz", "RDS kerak"]
+        answer: 1
+        why: "Hypervisor OS ichidagi RAM'ni ko'rmaydi."
+      - q: "Log xarajatini nazorat qilishning oddiy usuli?"
+        options: ["Loglarni o'chirish", "Log group retention muddatini belgilash", "Kamroq server", "Hech qanday"]
+        answer: 1
+        why: "Default — cheksiz saqlash."
+    hardcore:
+      - "SNS → Lambda (Python) → Telegram: CloudWatch alarm'lari to'g'ridan-to'g'ri Telegram ops kanaliga kelsin."
+
+  - key: aws-17-secrets
+    title: "Secrets Manager va SSM Parameter Store"
+    theory: |
+      Sirlar uchun AWS xizmatlari: SSM Parameter Store (SecureString — KMS bilan shifrlangan, standart darajasi arzon/bepul, oddiy konfig va sirlar uchun) va Secrets Manager (pullik, avtomatik rotatsiya, masalan RDS parollari). Ilova IAM role orqali o'qiydi — kalitlar kodda yoki .env'da yo'q.
+      Naqsh: EC2 user data yoki ilova startda Parameter Store'dan sirlarni olib, xotirada ishlatadi.
+    task: |
+      1) Parameter Store'ga `/bot/prod/BOT_TOKEN` (SecureString).
+      2) EC2 IAM role: faqat `/bot/prod/*` ni o'qish (ssm:GetParameter + kms:Decrypt).
+      3) EC2'dan `aws ssm get-parameter --with-decryption` bilan o'qing.
+      4) Botning startup kodiga Parameter Store'dan o'qish variantini qo'shing (boto3).
+    done: "Bot tokeni EC2 diskida emas, Parameter Store'da."
+    resources:
+      - {title: "AWS — Systems Manager Parameter Store", url: "https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html"}
+      - {title: "AWS — Secrets Manager", url: "https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html"}
+    quiz:
+      - q: "Parameter Store va Secrets Manager'ning asosiy farqi?"
+        options: ["Bir xil", "Secrets Manager — pullik, avtomatik rotatsiya; Parameter Store — arzon, oddiy", "Parameter Store shifrlamaydi", "Secrets Manager faqat RDS"]
+        answer: 1
+        why: "Ko'p holatda Parameter Store yetarli."
+      - q: "Ilova sirni qanday o'qishi kerak?"
+        options: ["Access key bilan", "IAM role orqali, faqat kerakli yo'lga huquq bilan", "Root bilan", "Ochiq URL"]
+        answer: 1
+        why: "Least privilege."
+    hardcore:
+      - "Secrets Manager'da RDS paroli uchun avtomatik rotatsiyani yoqing va ilova yangi parolni qayta ishga tushmasdan olishini ta'minlang."
+
+  - key: aws-18-lab
+    kind: lab
+    title: "LAB: kutilmagan xarajat"
+    theory: |
+      Cloud'dagi eng ko'p uchraydigan "incident" — kutilmagan hisob. Odatiy aybdorlar: unutilgan NAT Gateway, Elastic IP (bog'lanmagan), ishlab turgan RDS/EC2, katta EBS snapshot'lar, CloudWatch loglari, data transfer. Vositalar: Cost Explorer (xizmat va kun bo'yicha), Billing → Bills, tag'lar bilan cost allocation, Trusted Advisor, AWS Resource Explorer / Tag Editor (barcha region'lardagi resurslar).
+    task: |
+      1) Cost Explorer'da oxirgi 30 kunni xizmat va region bo'yicha tahlil qiling.
+      2) Resource Explorer yoki `aws resourcegroupstaggingapi get-resources` bilan barcha region'lardagi qolgan resurslarni toping.
+      3) Barcha resurslarga `Project=devops-quest`, `Owner=osonpy` tag'lari qo'yish qoidasini o'rnating; cost allocation tag'larini faollashtiring.
+      4) "Darsdan keyin tozalash" checklist'ini yozing.
+    done: "Hech qanday kutilmagan resurs qolmagan, tozalash checklist'i tayyor."
+    resources:
+      - {title: "AWS — Analyzing your costs with Cost Explorer", url: "https://docs.aws.amazon.com/cost-management/latest/userguide/ce-what-is.html"}
+    quiz:
+      - q: "O'rganish akkauntlarida eng ko'p unutiladigan qimmat resurs?"
+        options: ["S3 bucket (bo'sh)", "NAT Gateway", "IAM user", "Security group"]
+        answer: 1
+        why: "Soatbay to'lov — ishlatilmasa ham."
+      - q: "Xarajatni loyiha bo'yicha ajratish uchun?"
+        options: ["Alohida karta", "Tag'lar va cost allocation tags", "Region", "Ism"]
+        answer: 1
+        why: "FinOps'ning asosi."
+    hardcore:
+      - "Har kecha barcha region'larda `Project=devops-quest` tegli va 'ttl' tegi o'tgan resurslarni topib, Telegram'ga ro'yxat yuboradigan Lambda (yoki CI cron) yozing."
+
+  - key: aws-19-ecs
+    title: "ECR va ECS Fargate tushunchasi"
+    theory: |
+      ECR — AWS'ning container registry'si (IAM bilan, image scanning). ECS — AWS'ning konteyner orkestratori: task definition (image, CPU/RAM, env, sirlar), service (nechta task, ALB bilan), cluster. Fargate — serversiz rejim: EC2'larni boshqarmaysiz, task uchun to'laysiz.
+      ECS — Kubernetes'dan oddiyroq, AWS ichida. Kubernetes (EKS) — portativ, kuchliroq, murakkabroq. J4'da K8s'ni o'rganasiz; ECS'ni tushunish arxitektura tanlovida yordam beradi.
+    task: |
+      1) ECR repo yarating, bot image'ini push qiling (`aws ecr get-login-password`).
+      2) ECS Fargate'da bitta task sifatida bot (yoki FastAPI) ni ishga tushiring, sirlar Parameter Store'dan.
+      3) Loglarni CloudWatch'da ko'ring.
+      4) Narxni hisoblang va VPS bilan solishtiring; task'ni o'chiring.
+    done: "Bot Fargate'da ishladi va o'chirildi; narx solishtirma jurnalda."
+    resources:
+      - {title: "AWS — What is Amazon ECS?", url: "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html"}
+      - {title: "GfG — Introduction to Amazon ECS", url: "https://www.geeksforgeeks.org/devops/introduction-to-amazon-elastic-container-service-ecs/"}
+    quiz:
+      - q: "Fargate'ning asosiy afzalligi?"
+        options: ["Eng arzon", "Konteynerlar uchun server (EC2) boshqarish kerak emas", "Tezroq CPU", "Bepul"]
+        answer: 1
+        why: "Infratuzilma boshqaruvi AWS'da."
+      - q: "ECS task definition nima?"
+        options: ["Server", "Konteyner(lar) qanday ishlashi tavsifi: image, resurslar, env", "Load balancer", "Billing"]
+        answer: 1
+        why: "Compose service'ining analogi."
+    hardcore:
+      - "GitHub Actions'dan OIDC bilan ECR'ga push qilib, ECS service'ni yangi task definition bilan yangilaydigan deploy workflow yozing."
+
+  - key: aws-20-serverless
+    title: "Lambda va serverless tushunchasi"
+    theory: |
+      Lambda — funksiyani server'siz ishga tushirish: hodisa (API Gateway, S3, CloudWatch, schedule) → funksiya → natija. Faqat ishlagan vaqt uchun to'lov; cold start, maksimal ishlash vaqti cheklovi. DevOps'da: avtomatlashtirish, alertlarni qayta ishlash, tozalash vazifalari, webhook'lar.
+      EventBridge Scheduler — cron'ning serverless versiyasi.
+    task: |
+      1) Python Lambda: CloudWatch alarm SNS xabarini olib Telegram'ga yuborsin (aws-16 hardcore'ni yakunlang).
+      2) Bot tokenini Parameter Store'dan o'qisin (IAM role).
+      3) EventBridge Scheduler bilan har kuni "xarajat hisoboti" funksiyasi (Cost Explorer API).
+      4) CloudWatch'da Lambda loglari va vaqtini ko'ring.
+    done: "Alarm Telegram'ga Lambda orqali keladi."
+    resources:
+      - {title: "AWS — What is AWS Lambda?", url: "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html"}
+      - {title: "Serverless Land — Serverless 101", url: "https://serverlessland.com/learn/serverless-101"}
+    quiz:
+      - q: "Lambda qachon yaxshi tanlov?"
+        options: ["Doimiy yuqori yuklama", "Hodisaga asoslangan, qisqa, kam-kam ishlaydigan vazifalar", "Uzoq ishlaydigan jarayonlar", "Doimiy WebSocket"]
+        answer: 1
+        why: "Doimiy yuklamada server/konteyner arzonroq."
+      - q: "Cold start nima?"
+        options: ["Server sovushi", "Funksiya muhitini birinchi chaqiruvda tayyorlash kechikishi", "Xato", "Narx"]
+        answer: 1
+        why: "Kam ishlatiladigan funksiyalarda seziladi."
+    hardcore:
+      - "Botingizni webhook rejimida Lambda + API Gateway'da ishga tushiring (polling o'rniga) va narx/murakkablikni VPS bilan solishtiring."
+
+  - key: aws-21-cli-boto3
+    title: "AWS CLI va boto3 bilan avtomatlashtirish"
+    theory: |
+      Konsol — o'rganish uchun, kundalik ish — CLI/SDK/IaC bilan. boto3: `boto3.client("ec2")`, paginator'lar (ko'p natija), waiter'lar (`instance_running` ni kutish), xatolarni ushlash (`botocore.exceptions.ClientError`). Credentials — profil yoki role orqali, kodda hech qachon.
+      Bu Python ops vositangiz (opsctl) ga cloud qo'shish imkoniyati.
+    task: |
+      1) opsctl'ga `aws inventory` buyrug'i: barcha region'lardagi EC2, RDS, EIP, NAT'larni jadval/JSON qilib chiqarsin (paginator bilan).
+      2) `--tag Project=devops-quest` filtri.
+      3) `aws stop-dev` — `Env=dev` tegli EC2'larni to'xtatsin (`--dry-run` bilan).
+      4) moto bilan unit test.
+    done: "opsctl barcha region'lardagi resurslarni ko'rsatadi."
+    resources:
+      - {title: "Boto3 docs", url: "https://boto3.amazonaws.com/v1/documentation/api/latest/index.html"}
+      - {title: "moto — mock AWS services", url: "https://docs.getmoto.org/"}
+    quiz:
+      - q: "boto3'da 1000 dan ortiq natijani olish uchun?"
+        options: ["limit=10000", "Paginator", "Bir necha marta chaqirish tasodifiy", "Imkonsiz"]
+        answer: 1
+        why: "API'lar natijani sahifalab qaytaradi."
+      - q: "boto3 testlarini haqiqiy AWS'siz yozish?"
+        options: ["Imkonsiz", "moto bilan mock", "Prod'da test", "Lokal Linux"]
+        answer: 1
+        why: "Tez va bepul testlar."
+    hardcore:
+      - "Waiter'lar bilan: EC2 yaratib, running bo'lguncha kutib, health tekshirib, so'ng o'chiradigan to'liq 'ephemeral test server' skripti."
+
+  - key: aws-22-well-architected
+    title: "Well-Architected Framework"
+    theory: |
+      AWS Well-Architected — 6 ustun: Operational Excellence (avtomatlashtirish, kuzatuv), Security (least privilege, shifrlash, audit), Reliability (multi-AZ, backup, avtomatik tiklash), Performance Efficiency (to'g'ri resurs turi), Cost Optimization (to'g'ri o'lcham, keraksizni o'chirish), Sustainability.
+      Bu arxitektura intervyularining va Solutions Architect sertifikatining asosi. Har dizayn qarorida "qaysi ustunga ta'sir qiladi?" deb so'rang.
+    task: |
+      1) 6 ustunni o'qib, har biriga 2 ta amaliy misol (o'z loyihangizdan) yozing.
+      2) Hozirgi bot arxitekturangizni (VPS + Compose) 6 ustun bo'yicha baholang: kuchli va zaif tomonlar.
+      3) Xuddi shu botning AWS'dagi ideal arxitekturasini chizing va qaysi ustunlar yaxshilanganini belgilang.
+      4) Well-Architected Tool'da bitta lightweight review qiling (ixtiyoriy).
+    done: "VPS va AWS arxitekturalari 6 ustun bo'yicha solishtirildi."
+    resources:
+      - {title: "AWS Well-Architected Framework", url: "https://aws.amazon.com/architecture/well-architected/"}
+    quiz:
+      - q: "Multi-AZ va avtomatik backup qaysi ustunga tegishli?"
+        options: ["Cost", "Reliability", "Performance", "Sustainability"]
+        answer: 1
+        why: "Nosozlikdan tiklanish qobiliyati."
+      - q: "Ishlatilmayotgan resurslarni o'chirish qaysi ustun?"
+        options: ["Security", "Cost Optimization", "Reliability", "Operational Excellence"]
+        answer: 1
+        why: "Shuningdek Sustainability'ga ham foydali."
+    hardcore:
+      - "Botning AWS arxitekturasi uchun 2 sahifali design doc yozing: trade-off'lar (narx vs ishonchlilik) va nima uchun hozircha VPS yetarli ekanini asoslang."
+
+  - key: aws-23-ccp
+    title: "Cloud Practitioner'ga tayyorgarlik"
+    theory: |
+      AWS Certified Cloud Practitioner — kirish darajasidagi sertifikat (ixtiyoriy): cloud tushunchalari, xavfsizlik, asosiy xizmatlar, narxlar va qo'llab-quvvatlash. Sizning amaliy tajribangiz uning katta qismini qamraydi; qolgani — narx modellari, support rejalari va xizmatlar nomlari.
+      Asosiy maqsad Solutions Architect – Associate bo'lsa, CCP'ni o'tkazib yuborish ham mumkin. Qaror: Saudiya bozori uchun vaqt va pul resursiga qarab.
+    task: |
+      1) Rasmiy exam guide'ni o'qing (domenlar va og'irliklari).
+      2) AWS Skill Builder'dagi bepul rasmiy practice savollarini yeching.
+      3) Zaif domenlar ro'yxati va ularni yopish rejasi.
+      4) CCP topshirasizmi yoki to'g'ri SAA'ga o'tasizmi — qarorni asoslab yozing.
+    done: "Practice natijasi va sertifikat qarori jurnalda."
+    resources:
+      - {title: "AWS Certified Cloud Practitioner", url: "https://aws.amazon.com/certification/certified-cloud-practitioner/"}
+      - {title: "AWS Skill Builder", url: "https://skillbuilder.aws/"}
+    quiz:
+      - q: "Qaysi xizmat global (region'ga bog'liq emas)?"
+        options: ["EC2", "IAM", "RDS", "EBS"]
+        answer: 1
+        why: "IAM, Route 53, CloudFront — global."
+      - q: "Bir yillik barqaror yuklama uchun qaysi narx modeli arzonroq?"
+        options: ["On-Demand", "Savings Plans / Reserved", "Spot har doim", "Dedicated Host"]
+        answer: 1
+        why: "Uzoq muddat majburiyati evaziga chegirma."
+    hardcore:
+      - "O'tgan 23 dars savollaridan va o'z qaydlaringizdan 50 ta flashcard yarating (bot quiz formatida) va ularni keyingi modul uchun YAML'ga qo'shishni rejalashtiring."
+
+  - key: aws-24-project
+    kind: project
+    title: "LOYIHA: botni AWS'da qo'lda qurish"
+    theory: |
+      Modul yakuni: botni (yoki FastAPI ilovani) AWS'da to'liq arxitektura bilan qo'lda quring — keyingi modulda aynan shuni Terraform bilan kodga aylantirasiz. Qo'lda bir marta qurish — har resurs nima uchun kerakligini tushunishning eng yaxshi yo'li.
+    task: |
+      1) VPC (2 AZ, public/private), ALB (HTTPS, ACM yoki HTTP), ASG (private subnetlarda), RDS (private), Parameter Store sirlari.
+      2) EC2 user data: Docker + image (ECR'dan) + sirlar SSM'dan.
+      3) CloudWatch alarmlari → SNS → Telegram.
+      4) Arxitektura diagrammasi va har resurs uchun "nima uchun" izohi README'da.
+      5) Hamma narsani skrinshotlar bilan hujjatlab, so'ng o'chiring va Cost Explorer'da xarajatni tekshiring.
+    done: "Arxitektura ishladi, hujjatlandi va to'liq o'chirildi."
+    resources:
+      - {title: "milanm — Learn one Cloud provider", url: "https://github.com/milanm/DevOps-Roadmap#11-learn-one-cloud-provider"}
+      - {title: "GfG — AWS Tutorial", url: "https://www.geeksforgeeks.org/devops/aws-tutorial/"}
+    quiz:
+      - q: "Bu arxitekturada EC2'lar qaysi subnetda bo'lishi kerak?"
+        options: ["Public", "Private — faqat ALB orqali kirish", "Har qanday", "Default VPC"]
+        answer: 1
+        why: "Hujum yuzasi kichik."
+    hardcore:
+      - "Qo'lda qurgan arxitekturangizni `aws` CLI buyruqlari bilan to'liq takrorlaydigan bash skript yozing — keyin Terraform bilan solishtirib, IaC'ning afzalligini his qiling."

@@ -1,0 +1,464 @@
+# J1 · Linux asoslari · 1–3-hafta (18 dars)
+lessons:
+  - key: linux-01-intro
+    title: "Linux, distributivlar va terminal"
+    theory: |
+      Serverlarning katta qismi Linux'da ishlaydi; DevOps ishining ko'p qismi terminalda o'tadi. Linux — kernel, uning ustida GNU vositalari va paket menejeri bilan distributiv yig'iladi: Ubuntu/Debian (apt), RHEL/Rocky/Alma (dnf), Alpine (apk, konteynerlarda).
+      Terminal — oyna, shell (bash) — buyruqlarni o'qib bajaruvchi dastur. Prompt `user@host:~$` qayerda va kim ekaningizni ko'rsatadi; `$` oddiy user, `#` root. Buyruq tuzilishi: `buyruq -flag argument`.
+    task: |
+      1) VPS'ga kiring: `ssh root@IP` (yoki lokal VM/WSL).
+      2) `uname -a`, `cat /etc/os-release`, `hostnamectl`, `whoami`, `uptime` — natijalarni o'qing.
+      3) `~/devops-journal` papkasini oching va `day001.md` ga har bir buyruq nima ko'rsatganini o'z so'zingiz bilan yozing.
+      4) `history` bilan bugun nima terganingizni ko'ring.
+    done: "Jurnalda 5 ta buyruq va ularning izohi bor."
+    resources:
+      - {title: "roadmap.sh — DevOps (Operating System bo'limi)", url: "https://roadmap.sh/devops"}
+      - {title: "Ubuntu — The Linux command line for beginners", url: "https://ubuntu.com/tutorials/command-line-for-beginners"}
+    quiz:
+      - q: "Ubuntu va Debian'da qaysi paket menejeri ishlatiladi?"
+        options: ["dnf", "apt", "apk", "pacman"]
+        answer: 1
+        why: "Debian oilasi — apt/dpkg; RHEL oilasi — dnf; Alpine — apk."
+      - q: "Prompt oxiridagi `#` belgisi nimani bildiradi?"
+        options: ["Izoh", "Root foydalanuvchi", "Xato", "Fon jarayoni"]
+        answer: 1
+        why: "`#` — root, `$` — oddiy foydalanuvchi. Root sifatida har buyruqqa ehtiyot bo'ling."
+    hardcore:
+      - "Bitta buyruq bilan OS nomi, kernel versiyasi va uptime'ni bitta qatorda chiqaring (masalan: `Ubuntu 24.04 | 6.8.0 | up 3 days`). Buyruqni jurnalga yozing."
+
+  - key: linux-02-fhs
+    title: "Fayl tizimi ierarxiyasi va navigatsiya"
+    theory: |
+      Linux'da bitta daraxt bor, ildizi `/`. Muhim papkalar: /etc — konfiglar, /var — o'zgaruvchan ma'lumot (/var/log loglar), /home — foydalanuvchilar, /root — root'ning uyi, /tmp — vaqtinchalik, /opt — qo'shimcha dasturlar, /usr/bin — dasturlar, /proc va /sys — kernel ma'lumotlari (virtual).
+      Yo'llar: absolute (`/etc/nginx`) va relative (`../logs`). `.` — joriy, `..` — yuqori, `~` — uy papka. Navigatsiya: `pwd`, `cd`, `ls -lah`, `tree`.
+    task: |
+      1) `cd /` va `ls -la` — har bir papka nima uchunligini jurnalga bir qatordan yozing.
+      2) `cat /proc/cpuinfo | head`, `cat /proc/meminfo | head` — /proc nima ekanini tushuning.
+      3) `/var/log` ga kiring, eng katta 3 faylni `ls -lahS | head` bilan toping.
+      4) `cd -` va `cd ~` farqini sinab ko'ring.
+    done: "Har bir asosiy papkaning vazifasini xotiradan ayta olasiz."
+    resources:
+      - {title: "Linux Foundation — Filesystem Hierarchy Standard", url: "https://refspecs.linuxfoundation.org/FHS_3.0/fhs/index.html"}
+      - {title: "GfG — Linux File Hierarchy Structure", url: "https://www.geeksforgeeks.org/linux-unix/linux-file-hierarchy-structure/"}
+    quiz:
+      - q: "Nginx konfiguratsiyasi odatda qayerda bo'ladi?"
+        options: ["/var/nginx", "/etc/nginx", "/usr/nginx", "/home/nginx"]
+        answer: 1
+        why: "Konfiglar /etc ostida."
+      - q: "/proc papkasi nima?"
+        options: ["Dasturlar ombori", "Kernel taqdim etadigan virtual fayl tizimi", "Zaxira nusxalar", "Vaqtinchalik fayllar"]
+        answer: 1
+        why: "/proc diskda yo'q — kernel jarayon va tizim ma'lumotlarini fayl ko'rinishida beradi."
+    hardcore:
+      - "`/proc/<PID>/` ichidan o'z shell jarayoningizning (`echo $$`) buyruq qatori, ishchi papkasi va ochiq fayllar sonini toping. Qaysi fayllarni o'qiganingizni yozing."
+
+  - key: linux-03-files
+    title: "Fayllar bilan ishlash va wildcards"
+    theory: |
+      Asosiy buyruqlar: `touch` (bo'sh fayl), `mkdir -p` (ichma-ich papka), `cp -r` (nusxa), `mv` (ko'chirish/qayta nomlash), `rm` / `rm -r` (o'chirish — savatcha yo'q!). `ln -s` — symlink (yorliq).
+      Wildcard'lar (globbing) shell tomonidan kengaytiriladi: `*` istalgan, `?` bitta belgi, `[abc]` to'plam, `{a,b}` ro'yxat. `rm -rf` dan oldin har doim `ls` bilan qaysi fayllar tanlanishini tekshiring.
+    task: |
+      1) `mkdir -p ~/lab/app/{logs,config,releases}` — bitta buyruq bilan struktura.
+      2) `touch ~/lab/app/logs/app-{1..5}.log` — 5 ta fayl.
+      3) `releases/v1` va `releases/v2` yarating, `ln -s releases/v2 current` qiling — deploy'larda shunday ishlatiladi.
+      4) `ls ~/lab/app/logs/app-[2-4].log` — faqat 3 ta fayl chiqishini tekshiring, keyin ularni o'chiring.
+    done: "`current` symlink v2 ga ko'rsatadi, glob natijasini oldindan tekshirdingiz."
+    resources:
+      - {title: "GNU Bash — Filename Expansion", url: "https://www.gnu.org/software/bash/manual/html_node/Filename-Expansion.html"}
+    quiz:
+      - q: "`mkdir -p a/b/c` dagi `-p` nima qiladi?"
+        options: ["Ruxsatlar beradi", "Yo'q oraliq papkalarni ham yaratadi", "Yashirin papka yaratadi", "Faqat ko'rsatadi"]
+        answer: 1
+        why: "-p (parents) — butun yo'lni yaratadi, mavjud bo'lsa xato bermaydi."
+      - q: "Symlink'ning deploy'dagi foydasi?"
+        options: ["Diskni tejash", "`current` ni yangi relizga bir zumda almashtirish va rollback", "Tezlik", "Xavfsizlik"]
+        answer: 1
+        why: "Yangi reliz alohida papkada tayyorlanadi, so'ng symlink almashtiriladi — rollback ham bitta buyruq."
+    hardcore:
+      - "Atomic deploy skripti: yangi reliz papkasini yaratib, `ln -sfn` bilan `current` ni almashtirsin va 3 tadan eski relizlarni o'chirsin. Skriptni repo'ga joylang."
+
+  - key: linux-04-view
+    title: "Fayllarni o'qish va yordam olish"
+    theory: |
+      `cat` — butun fayl, `less` — sahifalab (q chiqish, / qidirish), `head -n 20` / `tail -n 20` — boshi/oxiri, `tail -f` — real vaqtda kuzatish (loglar uchun eng ko'p ishlatiladi), `wc -l` — qatorlar soni.
+      Yordam: `man ls` (to'liq qo'llanma), `ls --help`, `tldr ls` (qisqa misollar), `apropos` (kalit so'z bo'yicha buyruq qidirish). Senior'lar ham har kuni man o'qiydi — buni yodlash shart emas, topa olish kerak.
+    task: |
+      1) `sudo apt install tldr` (yoki `pipx install tldr`) o'rnating.
+      2) `man tail` dan `-F` va `-f` farqini toping va jurnalga yozing.
+      3) Ikkinchi terminalda `tail -F /var/log/syslog` (yoki `journalctl -f`) ochib, birinchisida `logger "salom devops"` yozing.
+      4) `wc -l /etc/passwd` — tizimda nechta account borligini toping.
+    done: "logger xabari tail oynasida paydo bo'ldi, -f va -F farqini tushuntira olasiz."
+    resources:
+      - {title: "tldr pages", url: "https://tldr.sh/"}
+      - {title: "The Linux Command Handbook (freeCodeCamp)", url: "https://www.freecodecamp.org/news/the-linux-commands-handbook/"}
+    quiz:
+      - q: "Log faylini real vaqtda kuzatish buyrug'i?"
+        options: ["cat -f", "tail -f", "head -f", "less -r"]
+        answer: 1
+        why: "tail -f yangi qatorlarni chiqarib turadi; -F fayl qayta yaratilsa (logrotate) ham davom etadi."
+      - q: "`less` ichida matn qidirish uchun qaysi tugma?"
+        options: [":", "/", "s", "f"]
+        answer: 1
+        why: "/so'z — oldinga qidiradi, n — keyingi topilma."
+    hardcore:
+      - "`man bash` ichidan `PROMPT_COMMAND` va `PS1` haqida o'qib, promptingizga joriy vaqt va oxirgi buyruqning exit code'ini qo'shing."
+
+  - key: linux-05-vim
+    title: "Vim va nano: serverda fayl tahrirlash"
+    theory: |
+      Serverda grafik muharrir yo'q — vim deyarli har yerda bor. Vim rejimlari: Normal (harakat va buyruqlar), Insert (`i` bilan matn yozish, `Esc` bilan chiqish), Command (`:`). Saqlash `:w`, chiqish `:q`, saqlab chiqish `:wq`, saqlamasdan `:q!`.
+      Eng foydali buyruqlar: `dd` (qatorni o'chirish), `yy`/`p` (nusxa/qo'yish), `u` (bekor), `/so'z` (qidirish), `:%s/eski/yangi/g` (almashtirish), `gg`/`G` (bosh/oxir). nano — oddiyroq zaxira variant.
+    task: |
+      1) `vimtutor` ni boshlang — 1–3-darslarini bajaring (~30 daq).
+      2) `/etc/hosts` nusxasini oling (`cp /etc/hosts ~/hosts.test`) va vim'da unga yangi qator qo'shing.
+      3) `:%s/localhost/LOCAL/g` bilan almashtiring, `u` bilan qaytaring, `:wq`.
+      4) `export EDITOR=vim` ni `~/.bashrc` ga qo'shing.
+    done: "Faylni vim'da ochib, o'zgartirib, saqlab chiqa olasiz — sichqonchasiz."
+    resources:
+      - {title: "Vim — vimtutor (o'rnatilgan)", url: "https://www.vim.org/docs.php"}
+      - {title: "Open Vim — interaktiv tutorial", url: "https://www.openvim.com/"}
+    quiz:
+      - q: "Vim'dan saqlamasdan chiqish buyrug'i?"
+        options: [":wq", ":q!", ":x", ":w"]
+        answer: 1
+        why: ":q! — o'zgarishlarni tashlab chiqadi."
+      - q: "Butun faylda `foo` ni `bar` ga almashtirish?"
+        options: [":s/foo/bar", ":%s/foo/bar/g", ":r foo bar", "/foo/bar"]
+        answer: 1
+        why: "% — barcha qatorlar, g — qatordagi barcha topilmalar."
+    hardcore:
+      - "`~/.vimrc` yarating: qator raqamlari, syntax highlighting, 2 bo'shliqli indent (YAML uchun), va `:set paste` ni F2 ga bog'lang. Faylni dotfiles repo'ga qo'ying."
+
+  - key: linux-06-find
+    kind: lab
+    title: "LAB: find bilan fayl qidirish va tozalash"
+    theory: |
+      `find` — eng kuchli qidiruv vositasi: `find /var/log -name "*.log" -size +10M -mtime -7` (nom, hajm, o'zgarish vaqti bo'yicha). `-type f/d`, `-user`, `-perm`, `-exec cmd {} \;` yoki `| xargs`.
+      Real holat: disk to'lib qoldi, sizdan nima joy egallaganini topish so'ralyapti. `du -sh * | sort -h` papkalar hajmini, `find` aniq fayllarni topadi. O'chirishdan oldin har doim avval faqat ro'yxatni ko'ring.
+    task: |
+      Lab tayyorlash: `bash -c 'mkdir -p ~/lab/disk && cd ~/lab/disk && for i in $(seq 1 50); do head -c $((RANDOM*100)) /dev/urandom > f$i.log; done; touch -d "30 days ago" f1*.log'`
+      1) ~/lab/disk ichidagi 1 MB dan katta fayllarni toping.
+      2) 20 kundan eski .log fayllarni toping (avval ro'yxat!), keyin `-delete` bilan o'chiring.
+      3) Butun tizimda root'ga tegishli bo'lmagan, lekin /etc ichidagi fayllarni toping.
+      4) Jurnalga: qaysi buyruq qaysi muammoni yechdi.
+    done: "Eski loglar o'chirildi, o'chirishdan oldin ro'yxat tekshirildi."
+    resources:
+      - {title: "GfG — find command in Linux", url: "https://www.geeksforgeeks.org/linux-unix/find-command-in-linux-with-examples/"}
+    quiz:
+      - q: "7 kundan oldin o'zgargan fayllarni topish uchun?"
+        options: ["-mtime -7", "-mtime +7", "-atime 7", "-newer 7"]
+        answer: 1
+        why: "+7 — 7 kundan eski, -7 — oxirgi 7 kun ichida."
+      - q: "Qaysi biri papka hajmlarini kattaligi bo'yicha saralaydi?"
+        options: ["ls -S", "du -sh * | sort -h", "df -h", "find -size"]
+        answer: 1
+        why: "du papka hajmini hisoblaydi, sort -h '1K, 2M, 3G' ni to'g'ri saralaydi."
+    hardcore:
+      - "Bir qatorli pipeline: /var/log ichida eng katta 5 faylni hajmi bilan, faqat find, du, sort, head yordamida chiqaring. Gist'ga joylang."
+
+  - key: linux-07-redirect
+    title: "stdin, stdout, stderr va pipe"
+    theory: |
+      Har jarayonda 3 oqim bor: stdin (0), stdout (1), stderr (2). Yo'naltirish: `>` (faylga, ustidan yozadi), `>>` (oxiriga qo'shadi), `2>` (xatolar), `2>&1` (xatoni stdout'ga qo'shish), `&>` (ikkalasi), `< fayl` (kirish), `/dev/null` (tashlab yuborish).
+      Pipe `|` bir buyruq stdout'ini keyingisining stdin'iga ulaydi — Unix falsafasi: kichik vositalarni birlashtiring. `tee` — ham ekranga, ham faylga yozadi.
+    task: |
+      1) `ls /etc /yoq-papka > out.txt 2> err.txt` — ikki fayl mazmunini solishtiring.
+      2) `ls /etc /yoq-papka &> all.txt` va `2>&1 >` tartibining farqini sinab ko'ring.
+      3) `cat /etc/passwd | cut -d: -f1 | sort | tee users.txt | wc -l`.
+      4) `cron` uchun klassik qator yozing: `skript.sh >> /var/log/skript.log 2>&1`.
+    done: "stdout va stderr'ni alohida va birgalikda yo'naltira olasiz."
+    resources:
+      - {title: "GNU Bash — Redirections", url: "https://www.gnu.org/software/bash/manual/html_node/Redirections.html"}
+    quiz:
+      - q: "`cmd > log 2>&1` nima qiladi?"
+        options: ["Faqat xatolarni yozadi", "stdout va stderr'ni log'ga yozadi", "Hech narsa", "Xatoni ekranga chiqaradi"]
+        answer: 1
+        why: "Avval stdout log'ga, keyin stderr stdout ketgan joyga."
+      - q: "Natijani ham ekranga, ham faylga yozish uchun?"
+        options: ["cat", "tee", "xargs", "echo"]
+        answer: 1
+        why: "tee — T shaklidagi quvur: oqimni ikkiga ajratadi."
+    hardcore:
+      - "Skript yozing: stdout'ni `out.log` ga, stderr'ni `err.log` ga va ikkalasini birga ekranga chiqarsin (process substitution `>(tee ...)` bilan)."
+
+  - key: linux-08-grep
+    title: "grep va regex asoslari"
+    theory: |
+      `grep` — matnda qidirish: `-i` (katta-kichik harf farqsiz), `-r` (rekursiv), `-n` (qator raqami), `-v` (teskari), `-c` (sanash), `-E` (kengaytirilgan regex), `-o` (faqat topilgan qism), `-A/-B/-C 3` (atrofidagi qatorlar).
+      Regex asoslari: `^` boshi, `$` oxiri, `.` istalgan belgi, `*` 0+ marta, `+` 1+ marta, `[0-9]` diapazon, `\b` so'z chegarasi. IP qidirish: `grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}'`.
+    task: |
+      1) `/var/log/auth.log` (yoki `journalctl -u ssh`) dan "Failed password" qatorlarini sanang.
+      2) Shu qatorlardan faqat IP manzillarni `-Eo` bilan ajrating.
+      3) `grep -rn "PermitRootLogin" /etc/ssh/` — konfig qayerda ekanini toping.
+      4) `grep -v '^#' /etc/ssh/sshd_config | grep -v '^$'` — faqat faol sozlamalar.
+    done: "Hujum qilgan IP'lar ro'yxati jurnalda."
+    resources:
+      - {title: "regex101 — interaktiv regex test", url: "https://regex101.com/"}
+      - {title: "GfG — grep command", url: "https://www.geeksforgeeks.org/linux-unix/grep-command-in-unixlinux/"}
+    quiz:
+      - q: "Izoh va bo'sh qatorlarsiz konfig ko'rish uchun qaysi regex?"
+        options: ["grep '#'", "grep -v '^#' | grep -v '^$'", "grep -c", "grep -o"]
+        answer: 1
+        why: "-v — moslarini chiqarib tashlaydi: ^# izohlar, ^$ bo'sh qatorlar."
+      - q: "`grep -o` nima qaytaradi?"
+        options: ["Butun qator", "Faqat mos kelgan qism", "Qatorlar soni", "Fayl nomlari"]
+        answer: 1
+        why: "-o (only-matching) — masalan faqat IP'ni ajratish uchun."
+    hardcore:
+      - "Nginx access.log'dan (yoki namunadan) 5xx javob qaytargan so'rovlar sonini endpoint bo'yicha guruhlab chiqaring — faqat grep, awk, sort, uniq."
+
+  - key: linux-09-text
+    title: "Matn qayta ishlash: cut, sort, uniq, tr"
+    theory: |
+      `cut -d: -f1` — ajratgich bo'yicha ustun, `sort` (-n son, -r teskari, -k2 ustun bo'yicha, -h hajm), `uniq -c` (takrorlarni sanash; avval sort shart!), `tr 'a-z' 'A-Z'` (belgilarni almashtirish), `tr -d` (o'chirish), `wc`, `paste`, `column -t` (jadval ko'rinishi).
+      Klassik "top-N" naqsh: `... | sort | uniq -c | sort -rn | head`. Bu bilan loglardan eng ko'p IP, endpoint, xato turini topasiz.
+    task: |
+      1) `/etc/passwd` dan login shell'lar bo'yicha userlar sonini chiqaring (7-ustun, top naqsh).
+      2) `ps aux` dan eng ko'p RAM ishlatayotgan 5 jarayon nomini chiqaring.
+      3) `history | awk '{print $2}' | sort | uniq -c | sort -rn | head` — eng ko'p ishlatgan buyruqlaringiz.
+      4) Natijalarni `column -t` bilan chiroyli formatlang.
+    done: "Top-N naqshini xotiradan yozasiz."
+    resources:
+      - {title: "GNU Coreutils manual", url: "https://www.gnu.org/software/coreutils/manual/coreutils.html"}
+    quiz:
+      - q: "Nima uchun `uniq -c` dan oldin `sort` kerak?"
+        options: ["Tezlik uchun", "uniq faqat ketma-ket takrorlarni birlashtiradi", "Talab emas", "Chiroyli chiqishi uchun"]
+        answer: 1
+        why: "uniq qo'shni qatorlarni solishtiradi; tartibsiz ro'yxatda takrorlar bir joyga to'planmaydi."
+      - q: "`sort -h` qanday qiymatlarni to'g'ri saralaydi?"
+        options: ["Sanalarni", "1K, 20M, 3G kabi hajmlarni", "Faqat harflarni", "IP manzillarni"]
+        answer: 1
+        why: "-h — human-readable sonlar."
+    hardcore:
+      - "CSV fayl (masalan 1000 qatorli sotuvlar) uchun faqat cut/sort/uniq/awk bilan har mahsulot bo'yicha jami summani hisoblang va eng ko'p sotilgan 3 tasini chiqaring."
+
+  - key: linux-10-users
+    title: "Foydalanuvchilar, guruhlar va sudo"
+    theory: |
+      Har user'ning UID'i bor (root = 0), ma'lumoti /etc/passwd da, parol xeshi /etc/shadow da, guruhlar /etc/group da. Servislar o'z system user'i bilan ishlaydi (www-data, postgres) — bu xavfsizlik chegarasi.
+      Buyruqlar: `adduser`/`useradd`, `usermod -aG group user` (-a ni unutmang, aks holda boshqa guruhlardan chiqib ketadi!), `passwd`, `id`, `su - user`, `sudo`. Sudo huquqlari /etc/sudoers.d/ ichida, faqat `visudo` bilan tahrirlang.
+    task: |
+      1) `deploy` user yarating, uni `sudo` guruhiga qo'shing, `id deploy` bilan tekshiring.
+      2) `deploy` uchun SSH kalit bilan kirishni sozlang (`~deploy/.ssh/authorized_keys`, huquqlar 700/600).
+      3) `/etc/sudoers.d/deploy` da faqat `systemctl restart nginx` ni parolsiz ruxsat bering (`visudo -f`).
+      4) `deploy` sifatida kirib, `sudo systemctl restart nginx` ishlashini va `sudo apt update` so'rashini tekshiring.
+    done: "Endi serverga root bilan emas, deploy bilan kirasiz."
+    resources:
+      - {title: "Ubuntu — Add a new user", url: "https://ubuntu.com/server/docs/user-management"}
+      - {title: "GfG — sudo command", url: "https://www.geeksforgeeks.org/linux-unix/sudo-command-in-linux-with-examples/"}
+    quiz:
+      - q: "`usermod -G docker ali` (-a siz) ning xavfi?"
+        options: ["Hech qanday", "ali boshqa barcha qo'shimcha guruhlardan chiqariladi", "Docker o'chadi", "Parol o'chadi"]
+        answer: 1
+        why: "-a (append) bo'lmasa guruhlar ro'yxati almashtiriladi."
+      - q: "sudoers faylini qaysi buyruq bilan tahrirlash kerak?"
+        options: ["nano /etc/sudoers", "visudo", "sudo edit", "chmod"]
+        answer: 1
+        why: "visudo sintaksisni tekshiradi; xato sudoers sizni root huquqidan mahrum qilishi mumkin."
+    hardcore:
+      - "Faqat `/srv/app` ichida ishlay oladigan, shell'i yo'q (`/usr/sbin/nologin`) `appsvc` system user yarating va nima uchun servislar uchun bunday user kerakligini 3 jumlada yozing."
+
+  - key: linux-11-perms
+    title: "Ruxsatlar: chmod, chown, umask"
+    theory: |
+      `ls -l` dagi `-rwxr-x---`: tur, keyin owner/group/others uchun r(4) w(2) x(1). `chmod 750` = owner rwx, group r-x, others yo'q. Symbolic: `chmod g+w,o-r`. Papka uchun: r — ro'yxat, w — fayl yaratish/o'chirish, x — ichiga kirish.
+      `chown user:group fayl`, `-R` rekursiv. `umask 022` — yangi fayllar 644, papkalar 755 bo'ladi. Xavfsizlik: maxfiy fayllar (kalitlar, .env) 600, hech qachon 777.
+    task: |
+      1) `/srv/app` papka: owner deploy, group www-data, huquq 750.
+      2) `.env` fayl yarating, 600 qiling; boshqa user bilan o'qishga urinib ko'ring.
+      3) `umask` ni 027 ga o'zgartirib yangi fayl yarating — huquqini hisoblab, `ls -l` bilan tekshiring.
+      4) `chmod 777` qilingan fayl nima uchun xavfli — jurnalga.
+    done: "Octal huquqlarni boshda hisoblaysiz, .env faqat egasiga o'qiladi."
+    resources:
+      - {title: "GfG — Permissions in Linux", url: "https://www.geeksforgeeks.org/linux-unix/permissions-in-linux/"}
+      - {title: "chmod calculator", url: "https://chmod-calculator.com/"}
+    quiz:
+      - q: "`chmod 640 secret` dan keyin group nima qila oladi?"
+        options: ["O'qish va yozish", "Faqat o'qish", "Hech narsa", "Ishga tushirish"]
+        answer: 1
+        why: "4 = r."
+      - q: "umask 027 bilan yangi fayl huquqi qanday bo'ladi?"
+        options: ["750", "640", "644", "600"]
+        answer: 1
+        why: "Fayllar 666 dan boshlanadi: 666 - 027 → 640."
+    hardcore:
+      - "Bash skript: berilgan papkada world-writable fayllar va 600 dan ochiq bo'lgan `.env`/`*.pem` fayllarni topib, hisobot chiqarsin va `--fix` bilan tuzatsin."
+
+  - key: linux-12-perms-lab
+    kind: lab
+    title: "LAB: maxsus bitlar va buzilgan ruxsatlar"
+    theory: |
+      SUID (4xxx) — dastur egasi huquqi bilan ishlaydi (`passwd` shunday), SGID (2xxx) papkada — yangi fayllar papka guruhini oladi (jamoa papkalari uchun), sticky bit (1xxx) — faqat egasi o'chira oladi (/tmp). ACL (`setfacl -m u:ali:rx dir`) — oddiy rwx yetmaganda.
+      Break-fix: "Permission denied" xatosini ko'rganda tartib — kim bo'lib ishlayapman (`id`), fayl va BARCHA ota papkalar huquqi (`namei -l /yo'l/fayl`), keyin SELinux/AppArmor.
+    task: |
+      Tayyorlash: `sudo mkdir -p /srv/shared/data && sudo chmod 700 /srv/shared && echo ok | sudo tee /srv/shared/data/file.txt`
+      1) deploy user bilan `cat /srv/shared/data/file.txt` — xatoni oling.
+      2) `namei -l /srv/shared/data/file.txt` bilan qaysi papka to'sayotganini toping.
+      3) `devops` guruhini yarating, /srv/shared'ni shu guruhga va 2770 (SGID) ga o'tkazing, deploy'ni qo'shing.
+      4) deploy bilan yangi fayl yarating — guruhi devops bo'lganini tekshiring.
+    done: "namei bilan sababni topdingiz, SGID papka ishlayapti."
+    resources:
+      - {title: "Red Hat — Linux file permissions explained", url: "https://www.redhat.com/en/blog/linux-file-permissions-explained"}
+    quiz:
+      - q: "Fayl 644, lekin user o'qiy olmayapti. Ehtimoliy sabab?"
+        options: ["Fayl buzilgan", "Ota papkalardan birida x huquqi yo'q", "Disk to'la", "Fayl juda katta"]
+        answer: 1
+        why: "Faylga yetish uchun yo'ldagi har papkada x kerak — namei -l buni ko'rsatadi."
+      - q: "Papkadagi SGID nima qiladi?"
+        options: ["Hamma narsani root qiladi", "Yangi fayllar papkaning guruhini meros oladi", "O'chirishni taqiqlaydi", "Fayllarni shifrlaydi"]
+        answer: 1
+        why: "Jamoaviy papkalar uchun qulay."
+    hardcore:
+      - "`find / -perm -4000 -type f 2>/dev/null` bilan SUID binarylarni toping, ulardan 3 tasi nima uchun SUID ekanini tushuntiring va GTFOBins saytida qaysi biri xavfli bo'lishi mumkinligini tekshiring."
+
+  - key: linux-13-processes
+    title: "Jarayonlar: ps, top, fon ishlari"
+    theory: |
+      Process — ishlayotgan dastur: PID, PPID (ota), user, holat (R running, S sleeping, D disk kutmoqda, Z zombie). `ps aux`, `ps -ef --forest`, `pstree`, `top`/`htop` (CPU, RAM, load average).
+      Load average 3 son: 1, 5, 15 daqiqalik o'rtacha navbat; CPU yadrolari soniga nisbatan baholanadi (`nproc`). Fon ishlari: `cmd &`, `jobs`, `fg`, `bg`, Ctrl+Z; SSH uzilsa ham ishlashi uchun `nohup` yoki `tmux` (production'da esa systemd).
+    task: |
+      1) `htop` o'rnating, F6 bilan RAM bo'yicha saralang, F5 daraxt ko'rinishi.
+      2) `sleep 1000 &` ishga tushiring, `jobs`, `fg`, Ctrl+Z, `bg` ni sinang.
+      3) `tmux` o'rnating: sessiya oching, `tmux detach`, SSH'dan chiqib qayta kiring va `tmux attach`.
+      4) `uptime` dagi load average'ni `nproc` bilan solishtirib, server yuklanganmi — jurnalga.
+    done: "tmux sessiyasi SSH uzilgandan keyin ham saqlanib qoldi."
+    resources:
+      - {title: "GfG — Process Management in Linux", url: "https://www.geeksforgeeks.org/linux-unix/process-management-in-linux/"}
+      - {title: "tmux cheat sheet", url: "https://tmuxcheatsheet.com/"}
+    quiz:
+      - q: "4 yadroli serverda load average 8 nimani bildiradi?"
+        options: ["Hammasi joyida", "O'rtacha 2 barobar ko'p ish navbatda — server haddan tashqari yuklangan", "8% CPU", "8 ta user"]
+        answer: 1
+        why: "Load yadro soniga nisbatan baholanadi."
+      - q: "D holatidagi jarayon nimani kutmoqda?"
+        options: ["Tarmoqni", "Disk I/O ni (to'xtatib bo'lmaydigan uyqu)", "Userni", "Hech narsani"]
+        answer: 1
+        why: "Ko'p D jarayonlar — odatda disk yoki NFS muammosi."
+    hardcore:
+      - "Zombie jarayon yarating (Python'da fork qilib, ota wait qilmasin), `ps` da Z holatini ko'rsating va uni qanday tozalash mumkinligini tushuntiring."
+
+  - key: linux-14-signals
+    title: "Signallar, kill va prioritet"
+    theory: |
+      Signal — jarayonga yuboriladigan xabar. SIGTERM (15) — iltimos to'xta (dastur tozalab chiqadi), SIGKILL (9) — majburiy o'ldirish (ushlab bo'lmaydi, tozalash yo'q), SIGHUP (1) — ko'p daemonlar konfigni qayta o'qiydi, SIGINT (2) — Ctrl+C.
+      Tartib: avval `kill PID` (TERM), kutish, faqat keyin `kill -9`. `pkill nom`, `killall`. Prioritet: `nice -n 10 cmd`, `renice`. Docker `docker stop` aynan SIGTERM yuboradi, 10 soniyadan keyin SIGKILL.
+    task: |
+      1) Python skript yozing: SIGTERM'ni ushlab "graceful shutdown..." deb chiqsin (`signal.signal`).
+      2) Uni ishga tushirib `kill PID` va `kill -9 PID` farqini kuzating.
+      3) `kill -l` bilan barcha signallarni ko'ring.
+      4) Og'ir buyruqni (`tar czf /tmp/x.tgz /usr`) `nice -n 19` bilan ishga tushirib, top'da NI ustunini ko'ring.
+    done: "Skriptingiz TERM'da chiroyli to'xtaydi, KILL'da esa yo'q — farqini tushuntira olasiz."
+    resources:
+      - {title: "man 7 signal", url: "https://man7.org/linux/man-pages/man7/signal.7.html"}
+    quiz:
+      - q: "Nima uchun darhol `kill -9` ishlatmaslik kerak?"
+        options: ["U ishlamaydi", "Dastur ulanishlar va fayllarni to'g'ri yopa olmaydi", "Sekin", "Root kerak"]
+        answer: 1
+        why: "SIGKILL tozalashga imkon bermaydi — ma'lumot yo'qolishi mumkin."
+      - q: "`docker stop` birinchi qaysi signalni yuboradi?"
+        options: ["SIGKILL", "SIGTERM", "SIGHUP", "SIGSTOP"]
+        answer: 1
+        why: "TERM, keyin grace period (default 10s), so'ng KILL."
+    hardcore:
+      - "Aiogram botingizga SIGTERM kelganda polling'ni to'xtatib, scheduler'ni yopib, DB ulanishini yopib chiqadigan graceful shutdown qo'shing va loglar bilan isbotlang."
+
+  - key: linux-15-systemd
+    title: "systemd: servislar va unit fayllar"
+    theory: |
+      systemd — PID 1, servislarni boshqaradi. `systemctl start|stop|restart|reload|status|enable|disable`, `systemctl list-units --failed`. Unit fayl: /etc/systemd/system/app.service.
+      Asosiy kalitlar: [Unit] Description, After=network-online.target; [Service] User=, WorkingDirectory=, ExecStart=, EnvironmentFile=, Restart=on-failure, RestartSec=5; [Install] WantedBy=multi-user.target. O'zgarishdan keyin: `systemctl daemon-reload`.
+    task: |
+      1) `python3 -m http.server 8080` ni `demo.service` qilib yozing, User=deploy.
+      2) `systemctl enable --now demo`, `status` ni o'qing.
+      3) `kill -9` qilib Restart=on-failure ishlashini ko'ring.
+      4) `systemctl cat demo` va `systemd-analyze verify` bilan tekshiring; reboot'dan keyin ham ishlashini tasdiqlang.
+    done: "Servis o'zi tiklanadi va reboot'dan keyin avtomatik ishlaydi."
+    resources:
+      - {title: "DigitalOcean — Systemd Essentials", url: "https://www.digitalocean.com/community/tutorials/systemd-essentials-working-with-services-units-and-the-journal"}
+      - {title: "man systemd.service", url: "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html"}
+    quiz:
+      - q: "Unit faylni o'zgartirgandan keyin nima qilish kerak?"
+        options: ["reboot", "systemctl daemon-reload", "apt update", "Hech narsa"]
+        answer: 1
+        why: "systemd unit fayllarni keshlaydi; daemon-reload qayta o'qitadi."
+      - q: "`enable` va `start` farqi?"
+        options: ["Farqi yo'q", "enable — boot'da avto ishga tushadi; start — hozir ishga tushiradi", "start — doimiy", "enable — o'chiradi"]
+        answer: 1
+        why: "`enable --now` ikkalasini birga qiladi."
+    hardcore:
+      - "Unit'ga xavfsizlik cheklovlarini qo'shing: ProtectSystem=strict, PrivateTmp=yes, NoNewPrivileges=yes, ReadWritePaths= faqat kerakli papka. `systemd-analyze security demo` balini oldin/keyin solishtiring."
+
+  - key: linux-16-logs
+    title: "Loglar: journalctl, /var/log, logrotate"
+    theory: |
+      systemd loglari journald'da: `journalctl -u nginx` (servis), `-f` (kuzatish), `--since "1 hour ago"`, `-p err` (faqat xatolar), `-b` (joriy boot), `--disk-usage`. An'anaviy loglar /var/log: syslog, auth.log, kern.log, ilova loglari.
+      logrotate — loglar diskni to'ldirmasligi uchun: /etc/logrotate.d/ da qoida (daily, rotate 7, compress, missingok, copytruncate). Incident'da birinchi qadam deyarli har doim loglar.
+    task: |
+      1) `journalctl -p err -b` — joriy boot'dagi barcha xatolarni ko'ring.
+      2) `journalctl -u ssh --since today | grep Failed | wc -l`.
+      3) `demo` servisingiz loglari uchun `/var/log/demo/app.log` + /etc/logrotate.d/demo qoidasini yozing.
+      4) `logrotate -d /etc/logrotate.d/demo` (dry-run), keyin `-f` bilan majburan aylantiring.
+    done: "logrotate qoidasi ishlaydi, journald'dan kerakli xatoni 30 soniyada topasiz."
+    resources:
+      - {title: "DigitalOcean — How To Use Journalctl", url: "https://www.digitalocean.com/community/tutorials/how-to-use-journalctl-to-view-and-manipulate-systemd-logs"}
+      - {title: "man logrotate", url: "https://man7.org/linux/man-pages/man8/logrotate.8.html"}
+    quiz:
+      - q: "Faqat xato darajasidagi journal yozuvlari uchun?"
+        options: ["journalctl -e", "journalctl -p err", "journalctl -x", "journalctl -k"]
+        answer: 1
+        why: "-p (priority) err va undan jiddiylari."
+      - q: "logrotate'dagi `copytruncate` qachon kerak?"
+        options: ["Hech qachon", "Ilova log faylini qayta ochmasa — nusxa olib, asl faylni bo'shatadi", "Siqish uchun", "Tezlik uchun"]
+        answer: 1
+        why: "Ba'zi ilovalar faylni qayta ochish signalini tushunmaydi."
+    hardcore:
+      - "journald hajmini 500 MB bilan cheklang (journald.conf), eski loglarni `--vacuum-time=7d` bilan tozalang va oldin/keyin `--disk-usage` natijasini yozing."
+
+  - key: linux-17-packages-disks
+    title: "Paketlar va disklar"
+    theory: |
+      apt: `apt update` (ro'yxat), `apt upgrade`, `apt install/remove/purge`, `apt-cache policy pkg` (versiya va manba), `dpkg -L pkg` (paket fayllari), `apt-mark hold` (versiyani qotirish). Xavfsizlik yangilanishlari uchun unattended-upgrades.
+      Disklar: `lsblk` (qurilmalar), `df -h` (bo'sh joy), `df -i` (inode'lar!), `du -sh`, `mount`, /etc/fstab (boot'da ulash, UUID bilan). Swap — RAM tugaganda zaxira, kichik VPS'da 1–2 GB swap foydali.
+    task: |
+      1) `ncdu` va `htop` paketlarini o'rnating, `apt-cache policy nginx` ni o'qing.
+      2) unattended-upgrades'ni yoqing (`dpkg-reconfigure -plow unattended-upgrades`).
+      3) 1 GB swap fayl yarating va /etc/fstab ga qo'shing; `free -h` bilan tekshiring.
+      4) `df -h` va `df -i` ni solishtiring — jurnalga inode nima ekanini yozing.
+    done: "Swap reboot'dan keyin ham faol, xavfsizlik yangilanishlari avtomatik."
+    resources:
+      - {title: "DigitalOcean — Add Swap on Ubuntu", url: "https://www.digitalocean.com/community/tutorials/how-to-add-swap-space-on-ubuntu-22-04"}
+      - {title: "Ubuntu — Automatic updates", url: "https://ubuntu.com/server/docs/package-management"}
+    quiz:
+      - q: "Disk bo'sh, lekin fayl yaratib bo'lmayapti. Nima tekshiriladi?"
+        options: ["RAM", "df -i (inode'lar)", "CPU", "DNS"]
+        answer: 1
+        why: "Juda ko'p mayda fayllar inode'larni tugatadi."
+      - q: "/etc/fstab da diskni nima bilan ko'rsatish ishonchliroq?"
+        options: ["/dev/sdb", "UUID", "Disk hajmi", "Label shart emas"]
+        answer: 1
+        why: "/dev/sdX nomlari reboot'da almashishi mumkin, UUID o'zgarmaydi."
+    hardcore:
+      - "Loop device (`truncate -s 1G disk.img; losetup`) da ext4 yarating, /mnt/data ga UUID bilan fstab orqali ulang, reboot'dan keyin ham ulanganini isbotlang."
+
+  - key: linux-18-project
+    kind: project
+    title: "LOYIHA: VPS'da servisni to'g'ri boshqarish"
+    theory: |
+      Modul yakuni: 3 haftada o'rganganlaringizni bitta haqiqiy ishda birlashtiramiz. Kichik FastAPI ilovani production'dagidek: alohida user, to'g'ri ruxsatlar, systemd, loglar va rotatsiya bilan ishga tushirasiz. Bu keyingi barcha modullarning poydevori bo'ladi.
+    task: |
+      1) `appsvc` system user, `/srv/app` (750, owner appsvc).
+      2) FastAPI `/health` endpointli ilova, venv bilan `/srv/app` ga.
+      3) `app.service`: User=appsvc, EnvironmentFile=/srv/app/.env (600), Restart=on-failure, xavfsizlik cheklovlari.
+      4) Loglar journald'da; `journalctl -u app` bilan oxirgi 50 qator.
+      5) `README.md`: o'rnatish qadamlari, foydalanilgan buyruqlar. GitHub'ga `linux-service-lab` repo.
+    done: "`curl localhost:8000/health` ishlaydi, kill va reboot'dan keyin ham. README GitHub'da."
+    resources:
+      - {title: "FastAPI — Deployment concepts", url: "https://fastapi.tiangolo.com/deployment/concepts/"}
+      - {title: "milanm — Learn Linux & Scripting", url: "https://github.com/milanm/DevOps-Roadmap#3-learn-linux--scripting"}
+    quiz:
+      - q: "Nima uchun ilova root bilan emas, alohida user bilan ishlaydi?"
+        options: ["Tezroq ishlaydi", "Buzilsa, hujumchi butun serverni emas, faqat shu user huquqlarini oladi", "Talab emas", "Loglar uchun"]
+        answer: 1
+        why: "Least privilege — zarar chegarasini kichraytiradi."
+    hardcore:
+      - "Ilovani 2 ta instansiya (8001, 8002) qilib systemd template unit (`app@.service`) bilan ishga tushiring va `systemctl start app@8001 app@8002` bilan boshqaring."

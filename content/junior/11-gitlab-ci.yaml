@@ -1,0 +1,151 @@
+# J2 · GitLab CI · 22-hafta (6 dars)
+# O'zbekistondagi ko'p kompaniyalar self-hosted GitLab ishlatadi.
+lessons:
+  - key: glci-01-basics
+    title: "GitLab CI: .gitlab-ci.yml, stages, jobs"
+    theory: |
+      `.gitlab-ci.yml` repo ildizida: `stages: [lint, test, build, deploy]`, har job `stage:`, `image:` (job qaysi konteynerda ishlashi), `script:`. Bir stage'dagi job'lar parallel, stage'lar ketma-ket. `needs:` — DAG (stage kutmasdan bog'liqlik).
+      GitHub Actions bilan solishtiring: workflow ≈ pipeline, job ≈ job, step ≈ script qatorlari, action ≈ CI/CD component yoki `include` qilingan shablon.
+    task: |
+      1) GitLab'dagi bot nusxasiga `.gitlab-ci.yml`: lint (ruff) va test (pytest) stage'lari, `image: python:3.12-slim`.
+      2) Pipeline grafini ko'ring.
+      3) `needs:` bilan test'ni lint tugashini kutmaydigan qiling (parallel) va farqni ko'ring.
+      4) GHA va GitLab CI tushunchalari jadvalini yozing.
+    done: "GitLab'da pipeline yashil."
+    resources:
+      - {title: "GitLab Docs — CI/CD YAML syntax", url: "https://docs.gitlab.com/ci/yaml/"}
+      - {title: "GitLab CI CD Tutorial (TechWorld with Nana)", url: "https://www.youtube.com/watch?v=qP8kir2GUgo"}
+    quiz:
+      - q: "GitLab CI'da bir stage ichidagi job'lar qanday ishlaydi?"
+        options: ["Ketma-ket", "Parallel", "Tasodifiy", "Faqat bittasi"]
+        answer: 1
+        why: "Stage'lar orasida ketma-ketlik."
+      - q: "`needs:` nima beradi?"
+        options: ["Secret", "Stage tartibiga qaramay aniq job'larga bog'liqlik (DAG)", "Cache", "Runner"]
+        answer: 1
+        why: "Pipeline tezlashadi."
+    hardcore:
+      - "`include:` bilan umumiy shablon fayldan (alohida repo) lint/test job'larini ulang — GitHub reusable workflow'ning GitLab analogi."
+
+  - key: glci-02-runners
+    title: "GitLab Runner: o'rnatish va executor'lar"
+    theory: |
+      Runner — job'larni bajaruvchi agent. gitlab.com'da shared runner'lar bor, self-hosted GitLab'da odatda o'zingiz o'rnatasiz. Executor'lar: shell (to'g'ridan-to'g'ri host'da — xavfli), docker (har job yangi konteynerda — eng ko'p), kubernetes.
+      Ro'yxatdan o'tkazish: runner token bilan `gitlab-runner register`; tag'lar bilan job'larni yo'naltirish (`tags: [vps]`). config.toml — concurrency, privileged, volumes.
+    task: |
+      1) VPS'da (yoki VM) gitlab-runner o'rnating, docker executor bilan loyihaga ro'yxatdan o'tkazing.
+      2) Job'ni `tags: [vps]` bilan o'z runner'ingizga yo'naltiring.
+      3) /etc/gitlab-runner/config.toml ni o'qing (concurrent, privileged).
+      4) shell executor xavfini jurnalga yozing.
+    done: "Job sizning runner'ingizda bajarildi."
+    resources:
+      - {title: "GitLab Docs — Install GitLab Runner", url: "https://docs.gitlab.com/runner/install/"}
+      - {title: "GitLab Docs — Executors", url: "https://docs.gitlab.com/runner/executors/"}
+    quiz:
+      - q: "Eng ko'p ishlatiladigan va izolyatsiyalangan executor?"
+        options: ["shell", "docker", "ssh", "virtualbox"]
+        answer: 1
+        why: "Har job toza konteynerda."
+      - q: "Job'ni aniq runner'ga yo'naltirish?"
+        options: ["image:", "tags:", "stage:", "only:"]
+        answer: 1
+        why: "Runner'ning tag'lari bilan moslashadi."
+    hardcore:
+      - "Runner'ni Docker konteyner ichida ishga tushiring (gitlab/gitlab-runner image) va konfigini volume'da saqlang — runner'ni ham konteynerlashtiring."
+
+  - key: glci-03-artifacts
+    title: "Artifacts, cache, variables va rules"
+    theory: |
+      `artifacts:` — job natijalari (hisobotlar, build) keyingi stage'larga va yuklab olishga; `reports: junit:` — testlar MR'da ko'rinadi. `cache:` — dependency'lar (key: lock fayl). Variables: CI/CD Settings'da (masked, protected — faqat himoyalangan branch'larda), predefined (`$CI_COMMIT_SHORT_SHA`, `$CI_COMMIT_BRANCH`).
+      `rules:` — job qachon ishlashi: `if: $CI_COMMIT_BRANCH == "main"`, `if: $CI_PIPELINE_SOURCE == "merge_request_event"`, `changes:`.
+    task: |
+      1) pip cache (key: requirements fayl).
+      2) pytest junit hisobotini artifact report qiling — MR'da testlar ko'rinsin.
+      3) Protected + masked variable qo'shing (TELEGRAM_TOKEN).
+      4) deploy job faqat main'da `rules:` bilan.
+    done: "MR'da test natijalari ko'rinadi, deploy faqat main'da."
+    resources:
+      - {title: "GitLab Docs — Job artifacts", url: "https://docs.gitlab.com/ci/jobs/job_artifacts/"}
+      - {title: "GitLab Docs — rules", url: "https://docs.gitlab.com/ci/yaml/#rules"}
+    quiz:
+      - q: "'Protected' variable nima?"
+        options: ["Shifrlangan", "Faqat himoyalangan branch/tag'lardagi pipeline'larda mavjud", "Faqat o'qiladi", "Admin uchun"]
+        answer: 1
+        why: "Feature branch'dagi kod production sirlarini ko'rmaydi."
+      - q: "Artifacts va cache farqi?"
+        options: ["Bir xil", "Artifacts — job natijalari (stage'lar orasida, ishonchli); cache — tezlashtirish uchun, kafolatsiz", "Cache abadiy", "Artifacts faqat test"]
+        answer: 1
+        why: "Cache yo'qolsa ham pipeline ishlashi kerak."
+    hardcore:
+      - "Monorepo uchun `rules: changes:` bilan faqat o'zgargan papkalar uchun job'larni ishga tushiradigan pipeline yozing."
+
+  - key: glci-04-registry
+    title: "GitLab Container Registry: dind va kaniko"
+    theory: |
+      Har GitLab loyihasida Container Registry bor (`$CI_REGISTRY_IMAGE`, login `$CI_REGISTRY_USER`/`$CI_JOB_TOKEN`). CI ichida image qurish usullari: docker-in-docker (`services: docker:dind`, privileged runner kerak — xavfsizlik kamchiligi), kaniko yoki buildah (privileged'siz, daemon'siz).
+      Tag: `$CI_COMMIT_SHORT_SHA` va tag pipeline'larida `$CI_COMMIT_TAG`.
+    task: |
+      1) dind bilan build+push job yozing (runner'da privileged=true kerakligini ko'ring).
+      2) Xuddi shuni kaniko bilan qiling — privileged'siz.
+      3) Image'ni Container Registry'da ko'ring, VPS'dan deploy token bilan pull qiling.
+      4) Ikki usulning xavfsizlik farqini yozing.
+    done: "Image privileged'siz (kaniko) build bo'lib registry'da."
+    resources:
+      - {title: "GitLab Docs — Build Docker images", url: "https://docs.gitlab.com/ci/docker/using_docker_build/"}
+      - {title: "GitLab Docs — Use kaniko", url: "https://docs.gitlab.com/ci/docker/using_kaniko/"}
+    quiz:
+      - q: "docker:dind'ning asosiy xavfi?"
+        options: ["Sekin", "Runner'da privileged konteyner kerak — host'ga keng kirish", "Pullik", "Ishlamaydi"]
+        answer: 1
+        why: "Shuning uchun kaniko/buildah afzal."
+      - q: "CI job registry'ga qanday login qiladi?"
+        options: ["Admin parol", "$CI_REGISTRY_USER va $CI_JOB_TOKEN (yoki $CI_REGISTRY_PASSWORD)", "SSH kalit", "Login shart emas"]
+        answer: 1
+        why: "Qisqa muddatli job token."
+    hardcore:
+      - "kaniko build'ga registry cache (`--cache=true --cache-repo`) qo'shib, rebuild vaqtini o'lchang."
+
+  - key: glci-05-environments
+    title: "Environments, manual deploy va review apps"
+    theory: |
+      `environment: {name: production, url: https://...}` — GitLab deploy tarixini yuritadi va rollback tugmasini beradi. `when: manual` — qo'lda tasdiqlash tugmasi; protected environments — kim deploy qila olishi. Review apps — har MR uchun vaqtinchalik muhit (`environment: name: review/$CI_COMMIT_REF_SLUG`, `on_stop`).
+    task: |
+      1) `deploy_production` job: environment + `when: manual` + faqat main.
+      2) SSH orqali VPS'ga deploy (GHA'dagi deploy.sh'ni qayta ishlating).
+      3) Environments sahifasida tarix va "Rollback" ni sinang.
+      4) Review app tushunchasini o'z botingiz uchun qanday bo'lishini jurnalga yozing.
+    done: "GitLab'dan qo'lda tasdiqlangan deploy ishlaydi."
+    resources:
+      - {title: "GitLab Docs — Environments", url: "https://docs.gitlab.com/ci/environments/"}
+    quiz:
+      - q: "GitLab'da qo'lda deploy tugmasi?"
+        options: ["only: manual", "when: manual", "manual: true", "rules: manual"]
+        answer: 1
+        why: "Job pipeline'da tugma bo'lib turadi."
+      - q: "Review app nima?"
+        options: ["Kod review vositasi", "Har MR uchun vaqtinchalik ishlaydigan muhit", "Monitoring", "Test hisobot"]
+        answer: 1
+        why: "O'zgarishni jonli ko'rish uchun."
+    hardcore:
+      - "Bot uchun review app: har MR'da alohida compose loyiha nomi va test bot token bilan VPS'da vaqtinchalik stack ko'tarilsin, MR yopilganda `on_stop` bilan o'chsin."
+
+  - key: glci-06-project
+    kind: project
+    title: "LOYIHA: bir xil pipeline GitLab'da"
+    theory: |
+      Modul yakuni: GitHub Actions'da qurgan pipeline'ingizni GitLab CI'da qayta quring. Ikkala platformada ishlay olish — mahalliy bozorda ham, xalqaroda ham afzallik. Farqlarni hujjatlab, intervyuda ishlatasiz.
+    task: |
+      1) lint → test (Postgres service) → build (kaniko) → scan (trivy) → deploy (manual, environment).
+      2) Protected variables, rules, cache, junit report.
+      3) O'z runner'ingizda ishlasin (tags).
+      4) README: GHA vs GitLab CI solishtirma jadval va har ikkisining kuchli tomonlari.
+    done: "GitLab pipeline to'liq ishlaydi, solishtirma hujjat tayyor."
+    resources:
+      - {title: "GitLab Docs — Get started with GitLab CI/CD", url: "https://docs.gitlab.com/ci/"}
+    quiz:
+      - q: "GitHub Actions'dagi `environment: production` + required reviewers'ning GitLab analogi?"
+        options: ["only: main", "Protected environment + when: manual", "tags:", "cache:"]
+        answer: 1
+        why: "Kim va qachon deploy qilishini nazorat qiladi."
+    hardcore:
+      - "Ikkala pipeline'ni bitta manbadan generatsiya qiladigan kichik skript yozing (YAML shablon → GHA va GitLab formatlari) — va nima uchun bu odatda yaxshi g'oya emasligini tushuntiring."

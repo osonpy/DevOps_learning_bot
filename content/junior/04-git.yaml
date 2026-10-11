@@ -1,0 +1,310 @@
+# J1 · Git, GitHub, GitLab · 9–10-hafta (12 dars)
+lessons:
+  - key: git-01-model
+    title: "Git modeli: working tree, index, commit"
+    theory: |
+      Git'da uch joy bor: working tree (fayllaringiz), index/staging (`git add` bilan tayyorlangan o'zgarishlar), repository (commitlar tarixi). Commit — butun loyiha holatining surati (snapshot), unikal SHA bilan; HEAD — hozir qaysi commit/branch'dasiz.
+      DevOps uchun Git — faqat kod emas: infra (Terraform), konfiglar, pipeline'lar ham Git'da. "Git'da bo'lmagan narsa mavjud emas" — GitOps'ning asosi.
+    task: |
+      1) `git config --global user.name/user.email`, `init.defaultBranch main`.
+      2) `devops-journal` papkani repo qiling: `git init`, `git status`, `git add`, `git commit`.
+      3) Faylni o'zgartiring: `git diff` (working vs index), `git add`, `git diff --staged`.
+      4) `git log --oneline --graph`, `git show HEAD`.
+    done: "Uch joy orasidagi farqni diagramma bilan tushuntira olasiz."
+    resources:
+      - {title: "Pro Git — Git Basics", url: "https://git-scm.com/book/en/v2/Git-Basics-Getting-a-Git-Repository"}
+      - {title: "GfG — Git Life Cycle", url: "https://www.geeksforgeeks.org/git/git-life-cycle/"}
+    quiz:
+      - q: "`git diff --staged` nimani ko'rsatadi?"
+        options: ["Working tree va index", "Index va oxirgi commit farqini", "Ikki branch", "Remote farqini"]
+        answer: 1
+        why: "Keyingi commit'ga nima kirishini."
+      - q: "HEAD nima?"
+        options: ["Birinchi commit", "Hozirgi tekshirilgan commit/branch ko'rsatkichi", "Remote server", "Konfig fayl"]
+        answer: 1
+        why: "Odatda branch'ga, u esa commit'ga ko'rsatadi."
+    hardcore:
+      - "`.git/objects` ichidan oxirgi commit obyektini `git cat-file -p` bilan ochib, tree va blob'largacha qo'lda kuzatib boring — Git ma'lumotni qanday saqlashini tushuntiring."
+
+  - key: git-02-undo
+    title: ".gitignore va xatolarni bekor qilish"
+    theory: |
+      .gitignore — Git kuzatmaydigan fayllar: `.env`, `__pycache__/`, `*.log`, `.venv/`, `*.tfstate`. Allaqachon kuzatilayotgan faylni chiqarish: `git rm --cached file`.
+      Bekor qilish: `git restore file` (working tree o'zgarishini tashlash), `git restore --staged` (index'dan chiqarish), `git commit --amend` (oxirgi commitni tuzatish, push'dan oldin!), `git reset --soft/--mixed/--hard HEAD~1`, `git revert SHA` (umumiy branch'da xavfsiz bekor qilish — yangi commit).
+    task: |
+      1) Python loyiha uchun .gitignore yozing (gitignore.io shabloni bilan).
+      2) Ataylab `.env` commit qiling, keyin `git rm --cached` bilan chiqaring — tarixda hali ham borligini `git log -p` da ko'ring.
+      3) `reset --soft`, `--mixed`, `--hard` farqini alohida test repo'da sinang.
+      4) `git revert` bilan commitni bekor qiling — tarix qanday ko'rinadi?
+    done: "Qachon reset, qachon revert ishlatishni bilasiz."
+    resources:
+      - {title: "gitignore.io", url: "https://www.toptal.com/developers/gitignore"}
+      - {title: "Atlassian — Undoing changes", url: "https://www.atlassian.com/git/tutorials/undoing-changes"}
+    quiz:
+      - q: "Push qilingan umumiy branch'dagi commitni bekor qilishning xavfsiz usuli?"
+        options: ["git reset --hard", "git revert", "git commit --amend", "Faylni o'chirish"]
+        answer: 1
+        why: "revert tarixni qayta yozmaydi — boshqalar buzilmaydi."
+      - q: "Sir (.env) tasodifan push qilindi. Birinchi qadam?"
+        options: ["git rm --cached", "Sirni darhol almashtirish (rotate) — u allaqachon oshkor", "Repo'ni private qilish", "Hech narsa"]
+        answer: 1
+        why: "Tarixdan tozalash ham kerak, lekin oshkor bo'lgan sir har doim yangilanadi."
+    hardcore:
+      - "Test repo'da tarixdan sirni butunlay olib tashlang (`git filter-repo` bilan), force push qiling va boshqa klonda nima bo'lishini ko'rsating."
+
+  - key: git-03-branch
+    title: "Branch, merge va conflict"
+    theory: |
+      Branch — commitga ko'rsatuvchi yengil ko'rsatkich: `git switch -c feature/x`, `git branch -a`. Merge: fast-forward (chiziqli, merge commit yo'q) yoki 3-way merge (merge commit).
+      Conflict — ikki branch bir joyni o'zgartirganda: `<<<<<<<`, `=======`, `>>>>>>>` belgilari. Yechish: faylni tahrirlang, `git add`, `git commit` (yoki `git merge --abort`). Kichik va tez-tez merge qilinadigan branch'lar — kamroq conflict.
+    task: |
+      1) `feature/a` va `feature/b` branch'larda bitta qatorni har xil o'zgartiring.
+      2) Ikkalasini main'ga merge qiling, conflict'ni qo'lda yeching.
+      3) `git log --graph --oneline --all` bilan tarixni ko'ring.
+      4) `git merge --no-ff` va fast-forward farqini sinang.
+    done: "Conflict'ni qo'rqmasdan yechasiz."
+    resources:
+      - {title: "GfG — Git Merge and Merge Conflict", url: "https://www.geeksforgeeks.org/git/git-merge-and-merge-conflict/"}
+      - {title: "Learn Git Branching", url: "https://learngitbranching.js.org/"}
+    quiz:
+      - q: "Fast-forward merge qachon mumkin?"
+        options: ["Har doim", "main yangi commitlarsiz bo'lsa — feature to'g'ridan-to'g'ri uning davomi", "Conflict bo'lsa", "Hech qachon"]
+        answer: 1
+        why: "Ko'rsatkich shunchaki oldinga suriladi."
+      - q: "Merge'ni boshlab, conflict'dan keyin bekor qilish?"
+        options: ["git reset", "git merge --abort", "git stash", "git clean"]
+        answer: 1
+        why: "Merge oldingi holatga qaytadi."
+    hardcore:
+      - "learngitbranching.js.org'dagi 'Main' bo'limining barcha darajalarini yakunlang va skrinshotni jurnalga qo'ying."
+
+  - key: git-04-remote
+    title: "Remote: GitHub, push, pull, fetch"
+    theory: |
+      Remote — boshqa joydagi repo nusxasi (odatda `origin`). `git remote -v`, `git push -u origin main` (upstream bog'lash), `git fetch` (yuklab oladi, lekin birlashtirmaydi), `git pull` = fetch + merge (yoki `--rebase`).
+      GitHub'ga SSH kalit bilan ulaning (HTTPS + token o'rniga). `git push --force` — umumiy branch'da xavfli; kerak bo'lsa `--force-with-lease`.
+    task: |
+      1) GitHub'ga SSH kalit qo'shing, `ssh -T git@github.com`.
+      2) `devops-journal` ni GitHub'ga push qiling.
+      3) Ikkinchi papkaga clone qilib, u yerda commit+push; birinchisida `fetch` va `pull` farqini kuzating.
+      4) `git pull --rebase` ni sinab, tarix farqini ko'ring.
+    done: "Jurnalingiz GitHub'da, fetch va pull farqini tushunasiz."
+    resources:
+      - {title: "GitHub Docs — Connecting with SSH", url: "https://docs.github.com/en/authentication/connecting-to-github-with-ssh"}
+    quiz:
+      - q: "`git fetch` nima qiladi?"
+        options: ["Remote o'zgarishlarni yuklab, branch'ingizga birlashtiradi", "Faqat yuklab oladi, lokal branch'ingizni o'zgartirmaydi", "Push qiladi", "O'chiradi"]
+        answer: 1
+        why: "Keyin o'zingiz merge/rebase qilasiz."
+      - q: "`--force-with-lease` ning `--force` dan afzalligi?"
+        options: ["Tezroq", "Remote'da siz ko'rmagan yangi commit bo'lsa push'ni rad etadi", "Farqi yo'q", "Tarixni saqlaydi"]
+        answer: 1
+        why: "Hamkasbingiz ishini tasodifan o'chirmaysiz."
+    hardcore:
+      - "Bitta repo'ni ham GitHub'ga, ham GitLab'ga avtomatik push qiladigan qiling (bir remote'da ikki pushurl) va ikkalasida commitlar bir xil ekanini ko'rsating."
+
+  - key: git-05-rebase
+    title: "Rebase, interactive rebase va cherry-pick"
+    theory: |
+      `git rebase main` — branch commitlarini main'ning oxiriga qayta yozadi: chiziqli tarix. Oltin qoida: boshqalar ishlatayotgan (push qilingan umumiy) branch'ni rebase qilmang.
+      `git rebase -i HEAD~4` — commitlarni squash (birlashtirish), reword (xabarni o'zgartirish), drop, tartibini o'zgartirish. `git cherry-pick SHA` — bitta commitni boshqa branch'ga ko'chirish (masalan hotfix'ni release branch'ga).
+    task: |
+      1) feature branch'da 4 ta tartibsiz commit ("wip", "fix", "fix2"...) qiling.
+      2) `rebase -i` bilan ularni 1 ta mazmunli commitga squash qiling.
+      3) main yangilangan holda `git rebase main`, conflict bo'lsa yeching (`--continue`).
+      4) Hotfix commitni `release/1.0` branch'ga cherry-pick qiling.
+    done: "PR'dan oldin tarixingizni tozalab bera olasiz."
+    resources:
+      - {title: "Atlassian — Merging vs Rebasing", url: "https://www.atlassian.com/git/tutorials/merging-vs-rebasing"}
+      - {title: "GfG — Git Cherry Pick", url: "https://www.geeksforgeeks.org/git/git-cherry-pick/"}
+    quiz:
+      - q: "Rebase'ning oltin qoidasi?"
+        options: ["Har doim rebase qiling", "Boshqalar foydalanayotgan umumiy branch'ni rebase qilmang", "Faqat main'ni rebase qiling", "Rebase'dan qoching"]
+        answer: 1
+        why: "Rebase commit SHA'larni o'zgartiradi — boshqalarning tarixi buziladi."
+      - q: "Bitta aniq commitni boshqa branch'ga olib o'tish?"
+        options: ["git merge", "git cherry-pick", "git rebase", "git stash"]
+        answer: 1
+        why: "Hotfix'larni bir nechta release branch'ga tarqatishda."
+    hardcore:
+      - "`git rebase -i --autosquash` va `git commit --fixup` oqimini o'rganing va 3 ta fixup commitni avtomatik birlashtirib ko'rsating."
+
+  - key: git-06-rescue-lab
+    kind: lab
+    title: "LAB: Git falokatlarini qutqarish"
+    theory: |
+      Git deyarli hech narsani darhol o'chirmaydi. `git reflog` — HEAD'ning barcha harakatlari tarixi (lokal, ~90 kun): `reset --hard` dan keyin ham commitni qaytarish mumkin. Detached HEAD — branch'siz commitda turish; yangi commitlarni saqlash uchun `git switch -c yangi-branch`.
+      `git stash` — tugallanmagan ishni vaqtincha chetga qo'yish. O'chirilgan branch'ni reflog'dagi SHA'dan qayta tiklash mumkin.
+    task: |
+      Har holatni o'zingiz yarating va qutqaring:
+      1) 3 ta commit qilib `git reset --hard HEAD~3` — reflog bilan qaytaring.
+      2) Branch'ni `git branch -D` bilan o'chiring — qaytaring.
+      3) `git checkout <eski-SHA>` qilib commit qiling (detached HEAD), keyin uni yo'qotmasdan branch'ga saqlang.
+      4) Tugallanmagan ish bilan branch almashtirish kerak — stash bilan hal qiling.
+    done: "4 ta falokatdan qutqardingiz va har biri uchun buyruqni jurnalga yozdingiz."
+    resources:
+      - {title: "Oh Shit, Git!?!", url: "https://ohshitgit.com/"}
+    quiz:
+      - q: "`reset --hard` qilib yo'qolgan commitni topish uchun?"
+        options: ["git log", "git reflog", "git status", "Imkonsiz"]
+        answer: 1
+        why: "reflog HEAD harakatlarini eslab qoladi."
+      - q: "Detached HEAD'da qilingan commitni saqlash?"
+        options: ["git push", "git switch -c yangi-branch", "git stash", "git reset"]
+        answer: 1
+        why: "Aks holda commit hech qanday branch'ga bog'lanmay qoladi."
+    hardcore:
+      - "`git fsck --lost-found` bilan reflog'da ham bo'lmagan 'osilib qolgan' (dangling) commitni toping va tiklang."
+
+  - key: git-07-pr
+    title: "Pull Request oqimi va code review"
+    theory: |
+      PR — o'zgarishni main'ga qo'shish taklifi: tavsif, diff, muhokama, avtomatik tekshiruvlar (CI). Yaxshi PR: kichik (< 400 qator), bitta maqsad, tushunarli tavsif (nima, nega, qanday tekshirildi).
+      Branch protection: main'ga to'g'ridan-to'g'ri push taqiqlangan, review va yashil CI majburiy. CODEOWNERS — qaysi fayllarni kim ko'rib chiqishi. DevOps'da infra o'zgarishlari ham PR orqali — bu audit va xavfsizlik.
+    task: |
+      1) GitHub'da main'ni protect qiling: PR majburiy, force push taqiqlangan.
+      2) PR shablonini qo'shing (`.github/pull_request_template.md`): nima, nega, test.
+      3) Feature branch'dan PR oching, o'zingizga review izohlar qoldiring, "suggestion" bilan tuzating.
+      4) Squash merge qiling va tarixni ko'ring.
+    done: "main'ga faqat PR orqali o'zgarish kiradi."
+    resources:
+      - {title: "GitHub Docs — About protected branches", url: "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches"}
+      - {title: "Google — Code review guide", url: "https://google.github.io/eng-practices/review/"}
+    quiz:
+      - q: "Yaxshi PR'ning belgisi?"
+        options: ["Iloji boricha katta", "Kichik, bitta maqsadli, tavsifi va test usuli bilan", "Tavsifsiz", "Ko'p maqsadli"]
+        answer: 1
+        why: "Kichik PR tez va sifatli ko'rib chiqiladi."
+      - q: "Branch protection nima uchun kerak?"
+        options: ["Tezlik", "main'ga tekshirilmagan o'zgarish kirishining oldini olish", "Joy tejash", "Chiroyli"]
+        answer: 1
+        why: "Review va CI'ni majburiy qiladi."
+    hardcore:
+      - "CODEOWNERS fayli va 2 ta majburiy status check bilan branch ruleset'ini sozlang; qoidalarni buzadigan PR bilan bloklanishini ko'rsating."
+
+  - key: git-08-gitlab
+    title: "GitLab: Merge Request va mirror"
+    theory: |
+      O'zbekistondagi ko'p kompaniyalar o'z serverida GitLab ishlatadi. Tushunchalar bir xil, nomlar boshqacha: Pull Request = Merge Request (MR), Organization = Group, Actions = GitLab CI. Protected branches, approval rules, issues va boards ham bor.
+      Repo'ni ikkala platformada saqlash: GitLab'ning push/pull mirroring funksiyasi yoki ikkinchi remote.
+    task: |
+      1) gitlab.com'da akkaunt va group oching, SSH kalit qo'shing.
+      2) `server-toolkit` ni GitLab'ga ham push qiling.
+      3) MR oching, approval va thread resolve funksiyalarini sinang.
+      4) GitHub ↔ GitLab farqlarini jadval qiling (5 ta tushuncha).
+    done: "Ikkala platformada MR/PR oqimini bajarasiz."
+    resources:
+      - {title: "GitLab Docs — Merge requests", url: "https://docs.gitlab.com/user/project/merge_requests/"}
+      - {title: "GitLab Docs — Repository mirroring", url: "https://docs.gitlab.com/user/project/repository/mirror/"}
+    quiz:
+      - q: "GitLab'da Pull Request qanday ataladi?"
+        options: ["Push Request", "Merge Request", "Change Request", "Patch"]
+        answer: 1
+        why: "MR — xuddi shu tushuncha."
+      - q: "Nima uchun GitLab'ni ham bilish foydali?"
+        options: ["Kerak emas", "Ko'p kompaniyalar o'z serverida self-hosted GitLab ishlatadi", "GitHub yopiladi", "Tezroq"]
+        answer: 1
+        why: "Ayniqsa mahalliy bozorda."
+    hardcore:
+      - "Docker'da GitLab CE'ni lokal ishga tushiring (kamida 4 GB RAM), root sifatida kirib, birinchi loyiha va user yarating — self-hosted GitLab qanday boshqarilishini his qiling."
+
+  - key: git-09-strategies
+    title: "Branching strategiyalari, tag va semver"
+    theory: |
+      GitHub Flow: main doim deploy'ga tayyor, qisqa feature branch + PR — kichik jamoalar va CD uchun. Git Flow: develop, release, hotfix branch'lar — rejalashtirilgan relizlar uchun, og'irroq. Trunk-based: hamma kichik o'zgarishlarni tez-tez main'ga, feature flag'lar bilan.
+      Relizlar tag bilan: `git tag -a v1.2.0 -m "..."`, `git push --tags`. Semver: MAJOR.MINOR.PATCH — buzuvchi o'zgarish / yangi funksiya / tuzatish.
+    task: |
+      1) Uch strategiyani diagramma bilan jurnalga chizing, har biriga qachon mos ekanini yozing.
+      2) `server-toolkit` ga `v0.1.0` annotated tag qo'ying va GitHub Release yarating.
+      3) Kichik tuzatish → `v0.1.1`, yangi funksiya → `v0.2.0`.
+      4) `git describe --tags` natijasini o'qing.
+    done: "Semver bo'yicha versiyani to'g'ri tanlaysiz."
+    resources:
+      - {title: "Semantic Versioning", url: "https://semver.org/"}
+      - {title: "trunkbaseddevelopment.com", url: "https://trunkbaseddevelopment.com/"}
+    quiz:
+      - q: "API'da orqaga mos kelmaydigan o'zgarish. Versiya 1.4.2 dan keyin?"
+        options: ["1.4.3", "1.5.0", "2.0.0", "1.4.2-1"]
+        answer: 2
+        why: "Buzuvchi o'zgarish — MAJOR."
+      - q: "CD bilan kichik jamoa uchun eng oddiy strategiya?"
+        options: ["Git Flow", "GitHub Flow / trunk-based", "Hech qanday", "Har kunga branch"]
+        answer: 1
+        why: "Kam branch — kam merge og'rig'i."
+    hardcore:
+      - "Tag push qilinganda versiyani `git describe` dan olib, artefakt nomiga (`toolkit-v0.2.0.tar.gz`) qo'shadigan `release.sh` yozing."
+
+  - key: git-10-hooks
+    title: "Conventional commits, hook'lar va pre-commit"
+    theory: |
+      Conventional Commits: `feat(scope): ...`, `fix:`, `docs:`, `chore:`, `ci:`, `refactor:`; `!` yoki `BREAKING CHANGE:` — major. Bu avtomatik CHANGELOG va versiyalash uchun asos.
+      Git hook'lar (.git/hooks): pre-commit, commit-msg, pre-push. `pre-commit` framework (.pre-commit-config.yaml) — hook'larni jamoa bilan bo'lishish: ruff, shellcheck, trailing-whitespace, gitleaks (sirlarni bloklash).
+    task: |
+      1) `pipx install pre-commit`; `.pre-commit-config.yaml`: shellcheck, end-of-file-fixer, gitleaks.
+      2) `pre-commit install`, `pre-commit run --all-files`.
+      3) Ataylab fayl ichiga soxta AWS kalit (`AKIA...`) yozib commit qilishga urining — bloklanishini ko'ring.
+      4) commit-msg hook: Conventional Commits formatini tekshirsin.
+    done: "Sir commit qilishga urinish bloklandi."
+    resources:
+      - {title: "Conventional Commits", url: "https://www.conventionalcommits.org/"}
+      - {title: "pre-commit", url: "https://pre-commit.com/"}
+    quiz:
+      - q: "Qaysi commit xabari Conventional Commits'ga mos?"
+        options: ["fixed bug", "fix(backup): handle missing dir", "Update", "WIP"]
+        answer: 1
+        why: "type(scope): description."
+      - q: "pre-commit framework'ning oddiy .git/hooks'dan afzalligi?"
+        options: ["Tezroq", "Konfig repo'da saqlanadi — butun jamoa bir xil tekshiruvlarni oladi", "Kerak emas", "Faqat Python uchun"]
+        answer: 1
+        why: ".git/hooks repo bilan birga tarqalmaydi."
+    hardcore:
+      - "O'z pre-commit hook'ingizni yozing (lokal repo hook): YAML fayllarda tab belgisi bo'lsa yoki 500 KB dan katta fayl qo'shilsa commitni to'xtatsin."
+
+  - key: git-11-forensics
+    title: "git bisect, blame va tarixda qidirish"
+    theory: |
+      "Kecha ishlardi, bugun buzildi" — `git bisect`: yaxshi va yomon commitni berasiz, Git binary search bilan aybdor commitni topadi (`git bisect run ./test.sh` — avtomatik). `git blame file` — har qator kim/qachon o'zgartirgan.
+      `git log -S "so'z"` — qatorni qo'shgan/o'chirgan commitlar (pickaxe), `git log -p -- path`, `git log --since="2 weeks ago" --author=`. Monorepo vs polyrepo, submodule — umumiy tushuncha.
+    task: |
+      1) 20 commitli tarix yarating, 13-commitda ataylab bug kiriting (test skript fail bo'ladi).
+      2) `git bisect start; bad; good <SHA>` bilan qo'lda toping.
+      3) Xuddi shuni `git bisect run ./test.sh` bilan avtomatik qiling.
+      4) `git log -S` bilan bug qatori qachon qo'shilganini toping.
+    done: "bisect run aybdor commitni avtomatik topdi."
+    resources:
+      - {title: "Pro Git — Debugging with Git", url: "https://git-scm.com/book/en/v2/Git-Tools-Debugging-with-Git"}
+    quiz:
+      - q: "1000 commit orasida bugni bisect necha qadamda topadi?"
+        options: ["~500", "~10", "1000", "100"]
+        answer: 1
+        why: "Binary search: log2(1000) ≈ 10."
+      - q: "Ma'lum matnni qo'shgan commitni topish?"
+        options: ["git blame", "git log -S 'matn'", "git status", "git diff"]
+        answer: 1
+        why: "Pickaxe qidiruvi."
+    hardcore:
+      - "Haqiqiy ochiq loyihada (masalan aiogram) `git log -S` va `git blame` bilan biror funksiya qachon va nima uchun o'zgarganini (PR'gacha) aniqlab, qisqa hisobot yozing."
+
+  - key: git-12-project
+    kind: project
+    title: "LOYIHA: Jamoaviy Git oqimi simulyatsiyasi"
+    theory: |
+      Modul yakuni: haqiqiy jamoada qanday ishlanishini yolg'iz simulyatsiya qilamiz — ikki "dasturchi" (ikki klon), himoyalangan main, PR, conflict, review, reliz. Intervyuda "Git bilan jamoada qanday ishlaysiz?" savoliga amaliy javobingiz bo'ladi.
+    task: |
+      `git-team-sim` repo:
+      1) main protected; PR shabloni; pre-commit; CODEOWNERS.
+      2) Klon A va B: parallel feature'lar, bir xil faylda conflict, PR'lar, birini rebase qilib merge.
+      3) Hotfix: `release/1.0` branch, cherry-pick, `v1.0.1` tag va GitHub Release.
+      4) Ataylab buzilgan commit + bisect bilan topish.
+      5) README: har qadam, buyruqlar va skrinshotlar.
+    done: "README'da butun oqim hujjatlangan, tarix toza."
+    resources:
+      - {title: "milanm — Git resources", url: "https://github.com/milanm/DevOps-Roadmap#1-git"}
+      - {title: "GfG — Git Tutorial", url: "https://www.geeksforgeeks.org/git/git-tutorial/"}
+    quiz:
+      - q: "Hotfix'ni main va release/1.0 ga qo'shishning odatiy usuli?"
+        options: ["Ikki joyda qo'lda yozish", "main'ga PR, keyin release branch'ga cherry-pick", "Force push", "Tag o'chirish"]
+        answer: 1
+        why: "Bitta o'zgarish, ikki joy — cherry-pick."
+    hardcore:
+      - "Ikkala klonni ikki xil Linux user qilib, umumiy bare repo (`git init --bare`) ni SSH orqali server'da ishlating — GitHub'siz o'z Git serveringiz."
