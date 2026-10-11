@@ -8,20 +8,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import settings
 from src.db import repo
+from src.db.models import User
 from src.keyboards.menus import BTN_PROGRESS, BTN_ROADMAP
+from src.middlewares.user import require_user
 from src.services import progress as pg
 from src.services.clock import local_today
 from src.services.render import LEVEL
 
-router = Router(name="progress")
+router = require_user(Router(name="progress"))
 
 
 @router.message(Command("progress"))
 @router.message(F.text == BTN_PROGRESS)
-async def show_progress(message: Message, session: AsyncSession):
-    user = await repo.get_user(session, message.from_user.id)
-    if not user:
-        return await message.answer("Avval /start bosing 🙂")
+async def show_progress(message: Message, session: AsyncSession, user: User):
     today = local_today(user.timezone)
     done_ids = await repo.completed_lesson_ids(session, user.id)
     junior_total = await repo.total_lessons(session, "junior")
@@ -50,10 +49,7 @@ async def show_progress(message: Message, session: AsyncSession):
 
 @router.message(Command("roadmap"))
 @router.message(F.text == BTN_ROADMAP)
-async def show_roadmap(message: Message, session: AsyncSession):
-    user = await repo.get_user(session, message.from_user.id)
-    if not user:
-        return await message.answer("Avval /start bosing 🙂")
+async def show_roadmap(message: Message, session: AsyncSession, user: User):
     done_ids = await repo.completed_lesson_ids(session, user.id)
     modules = await repo.modules_with_lessons(session)
     lines = ["🗺 <b>DevOps yo'li: Junior → Middle → Senior</b>"]

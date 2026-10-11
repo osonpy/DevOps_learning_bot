@@ -6,16 +6,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db import repo
 from src.db.models import User
-from src.handlers.common import reviews_left
+from src.handlers.common import ChatReply, drop_keyboard, reply_target, reviews_left
 from src.keyboards.callbacks import ReviewCB
 from src.keyboards.menus import review_kb
+from src.middlewares.user import require_user
 from src.services import learning, render
 from src.services.clock import local_today
 
-router = Router(name="review")
+router = require_user(Router(name="review"))
 
 
-async def _next_card(msg: Message, session: AsyncSession, user: User, done_in_session: int = 0) -> None:
+async def _next_card(msg: Message | ChatReply, session: AsyncSession, user: User, done_in_session: int = 0) -> None:
     today = local_today(user.timezone)
     left = await reviews_left(session, user, today)
     if left == 0:
@@ -29,34 +30,27 @@ async def _next_card(msg: Message, session: AsyncSession, user: User, done_in_se
 
 
 @router.message(Command("review"))
-async def cmd_review(message: Message, session: AsyncSession):
-    user = await repo.get_user(session, message.from_user.id)
-    if not user:
-        return await message.answer("Avval /start bosing 🙂")
+async def cmd_review(message: Message, session: AsyncSession, user: User):
     await _next_card(message, session, user)
 
 
 @router.callback_query(ReviewCB.filter(F.card_id == 0))
-async def start(cb: CallbackQuery, session: AsyncSession):
-    user = await repo.get_user(session, cb.from_user.id)
-    if not user:
-        return await cb.answer("Avval /start bosing")
-    await _next_card(cb.message, session, user)
+async def start(cb: CallbackQuery, session: AsyncSession, user: User):
+    await _next_card(reply_target(cb), session, user)
     await cb.answer()
 
 
 @router.callback_query(ReviewCB.filter(F.card_id > 0))
-async def answer(cb: CallbackQuery, callback_data: ReviewCB, session: AsyncSession):
-    user = await repo.get_user(session, cb.from_user.id)
+async def answer(cb: CallbackQuery, callback_data: ReviewCB, session: AsyncSession, user: User):
     card = await repo.get_card(session, callback_data.card_id)
-    if not user or not card or card.user_id != user.id:
+    if not card or card.user_id != user.id:
         return await cb.answer()
     today = local_today(user.timezone)
     if card.last_reviewed == today:  # ikki marta bosilgan tugma
         return await cb.answer("Bu karta bugun javob berilgan")
 
     res = await learning.answer_card(session, user, card, callback_data.opt, today)
-    await cb.message.edit_reply_markup(reply_markup=None)
+    await drop_keyboard(cb)
     q = card.question
     if res.ok:
         verdict = "✅ To'g'ri! +1 XP" + (" · 🏅 O'zlashtirildi!" if res.mastered
@@ -65,7 +59,8 @@ async def answer(cb: CallbackQuery, callback_data: ReviewCB, session: AsyncSessi
         verdict = f"❌ To'g'ri javob: <b>{chr(65 + q.correct_index)}</b> · karta ertaga qaytadi"
     if q.explanation:
         verdict += f"\n💡 {render.fmt(q.explanation)}"
-    await cb.message.answer(verdict)
+    msg = reply_target(cb)
+    await msg.answer(verdict)
     done = await repo.reviewed_today(session, user.id, today)
-    await _next_card(cb.message, session, user, done_in_session=done)
+    await _next_card(msg, session, user, done_in_session=done)
     await cb.answer()

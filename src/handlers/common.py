@@ -1,6 +1,7 @@
 from datetime import date
 
-from aiogram.types import InlineKeyboardMarkup
+from aiogram import Bot
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import settings
@@ -9,6 +10,25 @@ from src.db.models import User
 from src.keyboards.menus import lesson_kb, review_start_kb
 from src.services import learning, render, srs
 from src.services.clock import local_today
+
+
+class ChatReply:
+    """cb.message o'rnini bosadi: xabar eskirgan (InaccessibleMessage) yoki inline (None) bo'lsa — user'ga yangi xabar."""
+
+    def __init__(self, bot: Bot, chat_id: int):
+        self.bot, self.chat_id = bot, chat_id
+
+    async def answer(self, text: str, **kw):
+        return await self.bot.send_message(self.chat_id, text, **kw)
+
+
+def reply_target(cb: CallbackQuery) -> Message | ChatReply:
+    return cb.message if isinstance(cb.message, Message) else ChatReply(cb.bot, cb.from_user.id)
+
+
+async def drop_keyboard(cb: CallbackQuery) -> None:
+    if isinstance(cb.message, Message):
+        await cb.message.edit_reply_markup(reply_markup=None)
 
 
 async def reviews_left(session: AsyncSession, user: User, today: date) -> int:
