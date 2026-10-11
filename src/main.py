@@ -32,12 +32,13 @@ async def main() -> None:
     dp.include_routers(start.router, settings_handlers.router, progress.router, review.router, lesson.router)
 
     scheduler = setup_scheduler(bot, SessionFactory)
-    scheduler.start()
-    await bot.set_my_commands(COMMANDS)
     try:
+        scheduler.start()
+        await bot.set_my_commands(COMMANDS)
         await dp.start_polling(bot)
     finally:
-        scheduler.shutdown(wait=False)
+        if scheduler.running:
+            scheduler.shutdown(wait=False)
         await bot.session.close()
 
 
