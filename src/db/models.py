@@ -41,6 +41,9 @@ class Module(Base):
     level: Mapped[str] = mapped_column(String(16), default="junior")  # junior | middle | senior
     stage: Mapped[str] = mapped_column(String(8), default="J1")       # J1..J4, M1.., S1..
     stage_title: Mapped[str] = mapped_column(String(120), default="")
+    # "Manbalar" tugmasi: modulni to'liq o'rganish uchun asosiy manba va amaliyot platformalari
+    main_resource: Mapped[dict | None] = mapped_column(JSON(none_as_null=True))  # {"title":..,"url":..}; None -> SQL NULL
+    practice: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))  # [{"title":..,"url":..}]
 
     lessons: Mapped[list["Lesson"]] = relationship(
         back_populates="module", order_by="Lesson.day_number"

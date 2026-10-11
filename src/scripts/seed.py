@@ -41,6 +41,10 @@ def load_content(root: Path) -> tuple[list[dict], list[tuple[str, dict]]]:
 def validate(modules: list[dict], lessons: list[tuple[str, dict]]) -> None:
     slugs = [m["slug"] for m in modules]
     assert len(slugs) == len(set(slugs)), "modul slug'lari takrorlanmasin"
+    for m in modules:
+        links = ([m["main_resource"]] if m.get("main_resource") else []) + m.get("practice", [])
+        for r in links:
+            assert r.get("title") and str(r.get("url", "")).startswith("https://"), f"{m['slug']}: manba {r}"
     keys = [item["key"] for _, item in lessons]
     dup = {k for k in keys if keys.count(k) > 1}
     assert not dup, f"takrorlangan key: {dup}"
@@ -71,6 +75,7 @@ async def seed(session: AsyncSession, modules: list[dict], lessons: list[tuple[s
             session.add(obj)
         obj.title, obj.emoji, obj.order = m["title"], m.get("emoji", "📦"), order
         obj.level, obj.stage, obj.stage_title = m["level"], m["stage"], m.get("stage_title", "")
+        obj.main_resource, obj.practice = m.get("main_resource"), m.get("practice", [])
         by_slug[m["slug"]] = obj
     await session.flush()
 

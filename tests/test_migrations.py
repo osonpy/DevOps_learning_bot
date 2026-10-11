@@ -25,11 +25,13 @@ ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = sorted((ROOT / "migrations" / "versions").glob("*.py"))
 
 
-def test_single_initial_migration_without_sqlite_batch_ops():
-    assert len(VERSIONS) == 1
-    src = VERSIONS[0].read_text(encoding="utf-8")
-    assert "batch_alter_table" not in src
-    assert "CURRENT_TIMESTAMP)" not in src  # SQLite'dan generatsiya izi
+def test_migrations_generated_against_postgres():
+    assert VERSIONS[0].name.startswith("0001_")  # initial — Postgres'ga qarshi
+    for path in VERSIONS:
+        src = path.read_text(encoding="utf-8")
+        assert "batch_alter_table" not in src, path.name
+        assert "CURRENT_TIMESTAMP)" not in src, path.name  # SQLite'dan generatsiya izi
+        assert "sa.text('now()')" not in src, path.name  # SQLite'da yo'q — sa.func.now() ishlatiladi
 
 
 def test_migrations_upgrade_and_match_models_on_sqlite(tmp_path, monkeypatch):

@@ -2,35 +2,56 @@
 # file: bo'lsa — darslar shu faylda; bo'lmasa — modul "keyinroq" (roadmap'da qulf bilan ko'rinadi).
 # Darslar ketma-ket raqamlanadi, har 6 dars = 1 hafta (Du-Sh), Yakshanba — takrorlash.
 
+# Modul manbalari ("Manbalar" tugmasi): main_resource — modulni to'liq o'rganish uchun bitta asosiy manba,
+# practice — amaliyot platformalari (0–2 ta). Bir necha modulda takrorlanadi, shuning uchun anchor bilan.
+refs:
+  tlcl:        &tlcl        {title: "The Linux Command Line", url: "https://linuxcommand.org/tlcl.php"}
+  bandit:      &bandit      {title: "OverTheWire Bandit", url: "https://overthewire.org/wargames/bandit/"}
+  sadservers:  &sadservers  {title: "SadServers", url: "https://sadservers.com/"}
+  zines:       &zines       {title: "Julia Evans zines", url: "https://wizardzines.com/"}
+  progit:      &progit      {title: "Pro Git", url: "https://git-scm.com/book/en/v2"}
+  lgb:         &lgb         {title: "Learn Git Branching", url: "https://learngitbranching.js.org/"}
+  nginx_hb:    &nginx_hb    {title: "The NGINX Handbook", url: "https://www.freecodecamp.org/news/the-nginx-handbook/"}
+  iximiuz:     &iximiuz     {title: "iximiuz — Learning Containers", url: "https://iximiuz.com/en/posts/container-learning-path/"}
+  iximiuz_lab: &iximiuz_lab {title: "iximiuz Labs", url: "https://labs.iximiuz.com/"}
+  gha_docs:    &gha_docs    {title: "GitHub Actions docs", url: "https://docs.github.com/en/actions"}
+  ans4devops:  &ans4devops  {title: "Ansible for DevOps examples", url: "https://github.com/geerlingguy/ansible-for-devops"}
+  skillbuilder: &skillbuilder {title: "AWS Skill Builder", url: "https://skillbuilder.aws/"}
+  tf_tut:      &tf_tut      {title: "HashiCorp Terraform tutorials", url: "https://developer.hashicorp.com/terraform/tutorials"}
+  dwk:         &dwk         {title: "DevOps with Kubernetes", url: "https://devopswithkubernetes.com/"}
+  killercoda:  &killercoda  {title: "Killercoda", url: "https://killercoda.com/"}
+  prom_docs:   &prom_docs   {title: "Prometheus docs", url: "https://prometheus.io/docs/introduction/overview/"}
+  projects:    &projects    {title: "roadmap.sh DevOps Projects", url: "https://roadmap.sh/devops/projects"}
+
 modules:
   # ═══════════ JUNIOR · J1 POYDEVOR (1–14-hafta) ═══════════
-  - {slug: linux-basics,  level: junior, stage: J1, stage_title: "Poydevor", emoji: "🐧", title: "Linux asoslari",            file: junior/01-linux-basics.yaml}
-  - {slug: bash,          level: junior, stage: J1, stage_title: "Poydevor", emoji: "🐚", title: "Bash scripting",            file: junior/02-bash.yaml}
-  - {slug: network,       level: junior, stage: J1, stage_title: "Poydevor", emoji: "🌐", title: "Tarmoq",                    file: junior/03-network.yaml}
-  - {slug: git,           level: junior, stage: J1, stage_title: "Poydevor", emoji: "🌿", title: "Git, GitHub, GitLab",       file: junior/04-git.yaml}
-  - {slug: nginx-security,level: junior, stage: J1, stage_title: "Poydevor", emoji: "🛡", title: "Nginx va server xavfsizligi",file: junior/05-nginx-security.yaml}
+  - {slug: linux-basics,  level: junior, stage: J1, stage_title: "Poydevor", emoji: "🐧", title: "Linux asoslari",            file: junior/01-linux-basics.yaml, main_resource: *tlcl, practice: [*bandit, *sadservers]}
+  - {slug: bash,          level: junior, stage: J1, stage_title: "Poydevor", emoji: "🐚", title: "Bash scripting",            file: junior/02-bash.yaml, main_resource: *tlcl, practice: [*bandit, *sadservers]}
+  - {slug: network,       level: junior, stage: J1, stage_title: "Poydevor", emoji: "🌐", title: "Tarmoq",                    file: junior/03-network.yaml, main_resource: *zines, practice: [*sadservers]}
+  - {slug: git,           level: junior, stage: J1, stage_title: "Poydevor", emoji: "🌿", title: "Git, GitHub, GitLab",       file: junior/04-git.yaml, main_resource: *progit, practice: [*lgb]}
+  - {slug: nginx-security,level: junior, stage: J1, stage_title: "Poydevor", emoji: "🛡", title: "Nginx va server xavfsizligi",file: junior/05-nginx-security.yaml, main_resource: *nginx_hb}
   - {slug: python-ops,    level: junior, stage: J1, stage_title: "Poydevor", emoji: "🐍", title: "Python for Ops",            file: junior/06-python-ops.yaml}
-  - {slug: j1-project,    level: junior, stage: J1, stage_title: "Poydevor", emoji: "🏁", title: "J1 loyihasi: production-ready VPS", file: junior/07-j1-project.yaml}
+  - {slug: j1-project,    level: junior, stage: J1, stage_title: "Poydevor", emoji: "🏁", title: "J1 loyihasi: production-ready VPS", file: junior/07-j1-project.yaml, main_resource: *projects}
 
   # ═══════════ JUNIOR · J2 KONTEYNER VA CI/CD (15–24-hafta) ═══════════
-  - {slug: docker,        level: junior, stage: J2, stage_title: "Konteyner va CI/CD", emoji: "🐳", title: "Docker chuqur",          file: junior/08-docker.yaml}
-  - {slug: compose,       level: junior, stage: J2, stage_title: "Konteyner va CI/CD", emoji: "🧩", title: "Compose va production", file: junior/09-compose.yaml}
-  - {slug: github-actions,level: junior, stage: J2, stage_title: "Konteyner va CI/CD", emoji: "⚙️", title: "GitHub Actions",         file: junior/10-github-actions.yaml}
-  - {slug: gitlab-ci,     level: junior, stage: J2, stage_title: "Konteyner va CI/CD", emoji: "🦊", title: "GitLab CI",              file: junior/11-gitlab-ci.yaml}
-  - {slug: devsecops,     level: junior, stage: J2, stage_title: "Konteyner va CI/CD", emoji: "🔐", title: "DevSecOps asoslari",     file: junior/12-devsecops.yaml}
-  - {slug: j2-project,    level: junior, stage: J2, stage_title: "Konteyner va CI/CD", emoji: "🏁", title: "J2 loyihasi: to'liq delivery pipeline", file: junior/13-j2-project.yaml}
+  - {slug: docker,        level: junior, stage: J2, stage_title: "Konteyner va CI/CD", emoji: "🐳", title: "Docker chuqur",          file: junior/08-docker.yaml, main_resource: *iximiuz, practice: [*iximiuz_lab]}
+  - {slug: compose,       level: junior, stage: J2, stage_title: "Konteyner va CI/CD", emoji: "🧩", title: "Compose va production", file: junior/09-compose.yaml, main_resource: *iximiuz, practice: [*iximiuz_lab]}
+  - {slug: github-actions,level: junior, stage: J2, stage_title: "Konteyner va CI/CD", emoji: "⚙️", title: "GitHub Actions",         file: junior/10-github-actions.yaml, main_resource: *gha_docs}
+  - {slug: gitlab-ci,     level: junior, stage: J2, stage_title: "Konteyner va CI/CD", emoji: "🦊", title: "GitLab CI",              file: junior/11-gitlab-ci.yaml, main_resource: *gha_docs}
+  - {slug: devsecops,     level: junior, stage: J2, stage_title: "Konteyner va CI/CD", emoji: "🔐", title: "DevSecOps asoslari",     file: junior/12-devsecops.yaml, main_resource: *gha_docs}
+  - {slug: j2-project,    level: junior, stage: J2, stage_title: "Konteyner va CI/CD", emoji: "🏁", title: "J2 loyihasi: to'liq delivery pipeline", file: junior/13-j2-project.yaml, main_resource: *projects}
 
   # ═══════════ JUNIOR · J3 IaC VA CLOUD (25–35-hafta) ═══════════
-  - {slug: ansible,       level: junior, stage: J3, stage_title: "IaC va Cloud", emoji: "🅰️", title: "Ansible",       file: junior/14-ansible.yaml}
-  - {slug: aws,           level: junior, stage: J3, stage_title: "IaC va Cloud", emoji: "☁️", title: "AWS asoslari",  file: junior/15-aws.yaml}
-  - {slug: terraform,     level: junior, stage: J3, stage_title: "IaC va Cloud", emoji: "🏗", title: "Terraform",     file: junior/16-terraform.yaml}
-  - {slug: j3-project,    level: junior, stage: J3, stage_title: "IaC va Cloud", emoji: "🏁", title: "J3 loyihasi: kod bilan butun muhit", file: junior/17-j3-project.yaml}
+  - {slug: ansible,       level: junior, stage: J3, stage_title: "IaC va Cloud", emoji: "🅰️", title: "Ansible",       file: junior/14-ansible.yaml, main_resource: *ans4devops}
+  - {slug: aws,           level: junior, stage: J3, stage_title: "IaC va Cloud", emoji: "☁️", title: "AWS asoslari",  file: junior/15-aws.yaml, main_resource: *skillbuilder}
+  - {slug: terraform,     level: junior, stage: J3, stage_title: "IaC va Cloud", emoji: "🏗", title: "Terraform",     file: junior/16-terraform.yaml, main_resource: *tf_tut}
+  - {slug: j3-project,    level: junior, stage: J3, stage_title: "IaC va Cloud", emoji: "🏁", title: "J3 loyihasi: kod bilan butun muhit", file: junior/17-j3-project.yaml, main_resource: *projects}
 
   # ═══════════ JUNIOR · J4 KUBERNETES VA MONITORING (36–44-hafta) ═══════════
-  - {slug: kubernetes,    level: junior, stage: J4, stage_title: "Kubernetes va Monitoring", emoji: "☸️", title: "Kubernetes asoslari", file: junior/18-kubernetes.yaml}
-  - {slug: helm,          level: junior, stage: J4, stage_title: "Kubernetes va Monitoring", emoji: "⛵", title: "Helm",                file: junior/19-helm.yaml}
-  - {slug: monitoring,    level: junior, stage: J4, stage_title: "Kubernetes va Monitoring", emoji: "📈", title: "Monitoring va loglar", file: junior/20-monitoring.yaml}
-  - {slug: junior-final,  level: junior, stage: J4, stage_title: "Kubernetes va Monitoring", emoji: "🎓", title: "Junior yakuniy: portfolio va intervyu", file: junior/21-junior-final.yaml}
+  - {slug: kubernetes,    level: junior, stage: J4, stage_title: "Kubernetes va Monitoring", emoji: "☸️", title: "Kubernetes asoslari", file: junior/18-kubernetes.yaml, main_resource: *dwk, practice: [*killercoda]}
+  - {slug: helm,          level: junior, stage: J4, stage_title: "Kubernetes va Monitoring", emoji: "⛵", title: "Helm",                file: junior/19-helm.yaml, main_resource: *dwk, practice: [*killercoda]}
+  - {slug: monitoring,    level: junior, stage: J4, stage_title: "Kubernetes va Monitoring", emoji: "📈", title: "Monitoring va loglar", file: junior/20-monitoring.yaml, main_resource: *prom_docs}
+  - {slug: junior-final,  level: junior, stage: J4, stage_title: "Kubernetes va Monitoring", emoji: "🎓", title: "Junior yakuniy: portfolio va intervyu", file: junior/21-junior-final.yaml, main_resource: *projects}
 
   # ═══════════ MIDDLE (kontent Junior tugagach qo'shiladi) ═══════════
   - {slug: m-linux-perf,  level: middle, stage: M1, stage_title: "Platforma",   emoji: "🔬", title: "Linux ichki tuzilishi va performance"}

@@ -42,12 +42,24 @@ def lesson_card(lesson: Lesson, penalty: Penalty | None = None,
     return "\n".join(parts)
 
 
+def _link(r: dict) -> str:
+    return f'• <a href="{html.escape(r["url"])}">{html.escape(r["title"])}</a>'
+
+
 def resources_text(lesson: Lesson) -> str:
-    if not lesson.resources:
+    """Dars manbalari + modulning asosiy manbasi + amaliyot platformalari. Bo'sh bo'lim ko'rsatilmaydi."""
+    m = lesson.module
+    sections = [
+        ("Bu dars uchun", lesson.resources or []),
+        ("📘 Modulning asosiy manbasi", [m.main_resource] if m and m.main_resource else []),
+        ("🧪 Amaliyot", (m.practice if m else None) or []),
+    ]
+    sections = [(title, links) for title, links in sections if links]
+    if not sections:
         return "Bu dars uchun manba qo'shilmagan."
     lines = [f"📎 <b>Manbalar — #{lesson.day_number}</b>"]
-    for r in lesson.resources:
-        lines.append(f'• <a href="{html.escape(r["url"])}">{html.escape(r["title"])}</a>')
+    for title, links in sections:
+        lines += ["", f"<b>{title}</b>", *map(_link, links)]
     return "\n".join(lines)
 
 
