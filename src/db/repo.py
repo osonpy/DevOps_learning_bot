@@ -47,8 +47,8 @@ async def get_or_create_user(
     return user, True
 
 
-async def active_users(session: AsyncSession) -> list[User]:
-    return list(await session.scalars(select(User).where(User.is_active.is_(True))))
+async def active_user_ids(session: AsyncSession) -> list[int]:
+    return list(await session.scalars(select(User.id).where(User.is_active.is_(True)).order_by(User.id)))
 
 
 # ───────── lessons ─────────
