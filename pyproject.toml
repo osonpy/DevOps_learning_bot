@@ -1,7 +1,31 @@
 [project]
 name = "devops-quest-bot"
 version = "0.1.0"
-requires-python = ">=3.11"
+description = "DevOps Quest: 0 → Junior → Middle → Senior DevOps yo'lini o'yinga aylantiruvchi Telegram bot"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiogram>=3.31.0,<4",
+    "sqlalchemy[asyncio]>=2.1.4",
+    "asyncpg>=0.32.0",
+    "alembic>=1.20.0",
+    "apscheduler>=3.11.3,<4", # 4.x hali alpha — kerak emas
+    "pydantic-settings>=2.15.0",
+    "pyyaml>=6.0.3",
+    "tzdata>=2026.5",
+]
+
+[dependency-groups]
+dev = [
+    "aiosqlite>=0.22.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.17.0",
+]
+
+[tool.uv]
+# Ilova paket sifatida o'rnatilmaydi: `python -m src.main` bilan ishga tushadi
+package = false
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -11,7 +35,7 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 125
 extend-exclude = ["migrations/versions"]
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
