@@ -16,6 +16,7 @@ from pathlib import Path
 
 import yaml
 from sqlalchemy import select, update
+from sqlalchemy import text as sql
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -24,6 +25,7 @@ from src.db.models import HardcoreTask, Lesson, Module, QuizQuestion
 CONTENT_DIR = Path(__file__).resolve().parents[2] / "content"
 LESSONS_PER_WEEK = 6
 DEFAULT_XP = {"lesson": 10, "lab": 12, "project": 20}
+SEED_LOCK_KEY = 0x5EED_D0C5  # pg_advisory_xact_lock kaliti (bir vaqtda faqat bitta seed)
 
 
 def load_content(root: Path) -> tuple[list[dict], list[tuple[str, dict]]]:
@@ -51,8 +53,15 @@ def validate(modules: list[dict], lessons: list[tuple[str, dict]]) -> None:
             assert 0 <= q["answer"] < len(q["options"]), f"{item['key']}: answer indeksi xato"
 
 
+async def acquire_seed_lock(session: AsyncSession) -> None:
+    """Parallel seed'lar day_number almashtirishda to'qnashmasin. Lock tranzaksiya oxirida o'zi bo'shaydi."""
+    if session.bind.dialect.name == "postgresql":
+        await session.execute(sql("SELECT pg_advisory_xact_lock(:key)"), {"key": SEED_LOCK_KEY})
+
+
 async def seed(session: AsyncSession, modules: list[dict], lessons: list[tuple[str, dict]]) -> tuple[int, int]:
     validate(modules, lessons)
+    await acquire_seed_lock(session)
 
     by_slug: dict[str, Module] = {}
     for order, m in enumerate(modules, start=1):

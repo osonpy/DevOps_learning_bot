@@ -1,3 +1,20 @@
+# bot va migrate uchun umumiy sozlamalar (bir xil image)
+x-app: &app
+  build: .
+  image: ${BOT_IMAGE:-devops-quest-bot}:${IMAGE_TAG:-local}
+  env_file: .env
+  environment:
+    # Parol faqat .env dagi POSTGRES_PASSWORD da — URL shu yerda yig'iladi
+    DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-devops}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD kerak}@db:5432/${POSTGRES_DB:-devops_quest}
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  logging:
+    driver: json-file
+    options: {max-size: "10m", max-file: "3"}
+  networks: [backend]
+
 services:
   db:
     image: postgres:16-alpine
@@ -17,28 +34,26 @@ services:
       retries: 10
     networks: [backend]
 
-  bot:
-    build: .
-    image: ${BOT_IMAGE:-devops-quest-bot}:${IMAGE_TAG:-local}
-    restart: unless-stopped
-    env_file: .env
-    environment:
-      # Parol faqat .env dagi POSTGRES_PASSWORD da — URL shu yerda yig'iladi
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-devops}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD kerak}@db:5432/${POSTGRES_DB:-devops_quest}
+  # Bir martalik: migratsiya + seed. Muvaffaqiyatli tugasa bot ishga tushadi.
+  migrate:
+    <<: *app
+    command: ["sh", "-c", "alembic upgrade head && python -m src.scripts.seed"]
+    restart: "no"
     depends_on:
       db:
         condition: service_healthy
-    read_only: true
-    tmpfs: [/tmp]
-    cap_drop: [ALL]
-    security_opt: ["no-new-privileges:true"]
+
+  bot:
+    <<: *app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     deploy:
       resources:
         limits: {cpus: "0.50", memory: 256M}
-    logging:
-      driver: json-file
-      options: {max-size: "10m", max-file: "3"}
-    networks: [backend]
 
   # 19-kun: `docker compose --profile tools up -d`
   adminer:

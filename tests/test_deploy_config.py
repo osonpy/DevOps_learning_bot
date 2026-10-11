@@ -32,3 +32,19 @@ def test_env_example_has_password_once_and_placeholder():
     assert env["POSTGRES_PASSWORD"] == "CHANGE_ME"
     assert "DATABASE_URL" not in env  # parol ikki marta yozilmasin
     assert "openssl rand -base64 32" in (ROOT / ".env.example").read_text(encoding="utf-8")
+
+
+def test_migrate_is_one_shot_service_before_bot():
+    migrate = SERVICES["migrate"]
+    assert migrate["image"] == SERVICES["bot"]["image"]
+    cmd = " ".join(migrate["command"]) if isinstance(migrate["command"], list) else migrate["command"]
+    assert "alembic upgrade head && python -m src.scripts.seed" in cmd
+    assert migrate["restart"] == "no"
+    assert migrate["depends_on"]["db"]["condition"] == "service_healthy"
+    assert SERVICES["bot"]["depends_on"]["migrate"]["condition"] == "service_completed_successfully"
+
+
+def test_bot_image_does_not_migrate_on_start():
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    assert "ENTRYPOINT" not in dockerfile and "docker-entrypoint" not in dockerfile
+    assert not (ROOT / "docker-entrypoint.sh").exists()

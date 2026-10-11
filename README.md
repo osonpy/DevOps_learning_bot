@@ -11,7 +11,7 @@
 ```bash
 cp .env.example .env          # BOT_TOKEN ni BotFather'dan qo'ying
 sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -base64 32)|" .env
-docker compose up -d --build  # migratsiya + seed avtomatik
+docker compose up -d --build  # migrate servisi: alembic + seed, so'ng bot
 docker compose logs -f bot
 ```
 
@@ -84,7 +84,7 @@ tests/                   # streak/SRS unit + to'liq oqim integration testlari
 
 1. `content/<level>/NN-<modul>.yaml` yarating (`lessons:` ro'yxati; har darsda barqaror `key`).
 2. `content/modules.yaml` da modulga `file:` qo'shing.
-3. `uv run python -m src.scripts.seed` (yoki konteynerni qayta ishga tushiring).
+3. `uv run python -m src.scripts.seed` (Docker'da: `docker compose run --rm migrate`).
 
 Seed `key` bo'yicha upsert qiladi: savollar va hardcore vazifalar joyida yangilanadi, shuning uchun takrorlash kartalari va faol jarimalar saqlanadi. Dars raqamlari va haftalar tartibdan avtomatik hisoblanadi (har 6 dars = 1 hafta).
 

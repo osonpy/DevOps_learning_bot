@@ -28,8 +28,7 @@ COPY --chown=app:app alembic.ini ./
 COPY --chown=app:app migrations ./migrations
 COPY --chown=app:app content ./content
 COPY --chown=app:app src ./src
-COPY --chown=app:app --chmod=755 docker-entrypoint.sh ./
 
 USER app
-ENTRYPOINT ["./docker-entrypoint.sh"]
+# Migratsiya va seed — alohida `migrate` servisi (docker-compose.yml)
 CMD ["python", "-m", "src.main"]
