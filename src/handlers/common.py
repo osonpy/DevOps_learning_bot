@@ -64,7 +64,7 @@ async def build_today(session: AsyncSession, user: User, header: str | None = No
         text = "🧘 <b>Yakshanba — dam olish kuni.</b> Takrorlash uchun karta yo'q. Ertaga yangi dars!"
         return (f"{header}\n\n{text}" if header else text), None
 
-    lesson = await repo.get_lesson_by_day(session, user.current_day)
+    lesson = await repo.current_lesson(session, user)
     if lesson is None:
         return ("🏆 Hozircha barcha darslarni tugatdingiz! Keyingi daraja kontenti qo'shilishini kuting.",
                 review_start_kb(due) if due else None)

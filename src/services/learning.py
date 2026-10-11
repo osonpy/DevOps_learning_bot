@@ -29,7 +29,7 @@ async def run_daily_check(session: AsyncSession, user: User, today: date) -> Dai
         user.streak = 0
 
     kind = streak.penalty_kind(missed, settings.penalty_threshold, settings.hardcore_threshold)
-    lesson = await repo.get_lesson_by_day(session, user.current_day)
+    lesson = await repo.current_lesson(session, user)
 
     if kind and lesson:
         if penalty is None:
@@ -77,7 +77,8 @@ class CompletionResult:
 
 async def complete_lesson(session: AsyncSession, user: User, lesson: Lesson, today: date,
                           with_penalty: bool = False) -> CompletionResult:
-    if lesson.day_number != user.current_day:
+    current = await repo.current_lesson(session, user)
+    if current is None or lesson.id != current.id:
         return CompletionResult(False, "Bu dars hozirgi navbatdagi dars emas. 📚 Bugungi darsni oching.")
     if await repo.is_completed(session, user.id, lesson.id):
         return CompletionResult(False, "Bu dars allaqachon bajarilgan ✅")
@@ -91,10 +92,10 @@ async def complete_lesson(session: AsyncSession, user: User, lesson: Lesson, tod
     user.streak, user.best_streak = upd.streak, upd.best_streak
     user.last_done_date = today
     user.xp += xp
-    user.current_day += 1
+    nxt = await repo.next_active_lesson(session, lesson.day_number)
+    user.current_lesson_id = nxt.id if nxt else None
 
-    total = await repo.total_lessons(session)
-    finished = user.current_day > total
+    finished = nxt is None
     msg = motivation.pick(motivation.DONE, xp=xp, streak=user.streak)
     if streak.streak_xp_bonus(upd.streak) and upd.counted:
         msg += f"\n🎁 {upd.streak} kunlik streak bonusi: +20 XP!"

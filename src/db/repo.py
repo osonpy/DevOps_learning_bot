@@ -40,8 +40,10 @@ async def get_or_create_user(
         nudge_time=settings.default_nudge_time,
         started_on=today,
         last_check_date=today,  # ro'yxatdan o'tgan kuni "o'tkazib yubordi" deb hisoblamaymiz
-        streak=0, best_streak=0, xp=0, current_day=1,
+        streak=0, best_streak=0, xp=0,
     )
+    first = await next_active_lesson(session)
+    user.current_lesson_id = first.id if first else None
     session.add(user)
     await session.flush()
     return user, True
@@ -52,22 +54,49 @@ async def active_user_ids(session: AsyncSession) -> list[int]:
 
 
 # ───────── lessons ─────────
+_LESSON_FULL = (selectinload(Lesson.module), selectinload(Lesson.questions), selectinload(Lesson.hardcore))
+
+
 async def get_lesson_by_day(session: AsyncSession, day: int) -> Lesson | None:
     return await session.scalar(
-        select(Lesson)
-        .where(Lesson.day_number == day, Lesson.is_active.is_(True))
-        .options(selectinload(Lesson.module), selectinload(Lesson.questions),
-                 selectinload(Lesson.hardcore))
+        select(Lesson).where(Lesson.day_number == day, Lesson.is_active.is_(True)).options(*_LESSON_FULL)
     )
 
 
 async def get_lesson(session: AsyncSession, lesson_id: int) -> Lesson | None:
+    return await session.scalar(select(Lesson).where(Lesson.id == lesson_id).options(*_LESSON_FULL))
+
+
+async def next_active_lesson(session: AsyncSession, after_day: int = 0) -> Lesson | None:
+    """day_number > after_day bo'lgan eng kichik faol dars."""
     return await session.scalar(
-        select(Lesson)
-        .where(Lesson.id == lesson_id)
-        .options(selectinload(Lesson.module), selectinload(Lesson.questions),
-                 selectinload(Lesson.hardcore))
+        select(Lesson).where(Lesson.is_active.is_(True), Lesson.day_number > after_day)
+        .order_by(Lesson.day_number).limit(1).options(*_LESSON_FULL)
     )
+
+
+async def first_uncompleted_lesson(session: AsyncSession, user_id: int) -> Lesson | None:
+    done = select(Completion.lesson_id).where(Completion.user_id == user_id)
+    return await session.scalar(
+        select(Lesson).where(Lesson.is_active.is_(True), Lesson.id.not_in(done))
+        .order_by(Lesson.day_number).limit(1).options(*_LESSON_FULL)
+    )
+
+
+async def current_lesson(session: AsyncSession, user: User) -> Lesson | None:
+    """User'ning navbatdagi darsi.
+
+    Ko'rsatkich bo'sh (kurs tugagan), dars o'chirilgan (is_active=False) yoki allaqachon bajarilgan
+    bo'lsa — birinchi bajarilmagan faol darsga o'tkazamiz (darslar ketma-ket bajariladi, shuning uchun
+    bu o'chirilgan darsdan keyingi dars).
+    """
+    if user.current_lesson_id is not None:
+        lesson = await get_lesson(session, user.current_lesson_id)
+        if lesson is not None and lesson.is_active and not await is_completed(session, user.id, lesson.id):
+            return lesson
+    lesson = await first_uncompleted_lesson(session, user.id)
+    user.current_lesson_id = lesson.id if lesson else None
+    return lesson
 
 
 async def total_lessons(session: AsyncSession, level: str | None = None) -> int:

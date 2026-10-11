@@ -29,7 +29,7 @@ async def show_progress(message: Message, session: AsyncSession, user: User):
     level, to_next = pg.level_for(user.xp)
     penalties = await repo.penalties_count(session, user.id)
     cards, mastered = await repo.card_stats(session, user.id)
-    lesson = await repo.get_lesson_by_day(session, user.current_day)
+    lesson = await repo.current_lesson(session, user)
     where = (f"{LEVEL.get(lesson.module.level)} · {lesson.module.stage} · {html.escape(lesson.module.title)} · "
              f"{lesson.week}-hafta") if lesson else "Barcha darslar tugagan"
 
@@ -67,5 +67,6 @@ async def show_roadmap(message: Message, session: AsyncSession, user: User):
             md = sum(1 for ls in ml if ls.id in done_ids)
             status = "✅" if ml and md == len(ml) else ("▶️" if md else "▫️")
             lines.append(f"{status} {m.emoji} {html.escape(m.title)} ({md}/{len(ml)})")
-    lines.append(f"\n▶️ Keyingi dars: <b>#{user.current_day}</b>")
+    current = await repo.current_lesson(session, user)
+    lines.append(f"\n▶️ Keyingi dars: <b>#{current.day_number}</b>" if current else "\n🏆 Barcha darslar tugagan")
     await message.answer("\n".join(lines))

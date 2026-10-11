@@ -71,11 +71,11 @@ async def test_reseed_keeps_ids(sf):
 async def test_full_flow_with_penalty_and_review(sf):
     async with sf() as s:
         user, created = await repo.get_or_create_user(s, 42, "osonpy", "Osonbek Test", MON)
-        assert created and user.current_day == 1
+        assert created and user.current_lesson_id == (await repo.get_lesson_by_day(s, 1)).id
 
         lesson = await repo.get_lesson_by_day(s, 1)
         res = await learning.complete_lesson(s, user, lesson, MON)
-        assert res.ok and user.streak == 1 and user.current_day == 2
+        assert res.ok and user.streak == 1 and user.current_lesson_id == (await repo.get_lesson_by_day(s, 2)).id
         # dars savollari takrorlash kartasiga aylandi, ertaga due
         assert await repo.due_count(s, user.id, MON) == 0
         assert await repo.due_count(s, user.id, MON + timedelta(days=1)) == len(lesson.questions)

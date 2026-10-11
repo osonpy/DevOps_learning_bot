@@ -2,7 +2,7 @@
 
 Revision ID: 0001
 Revises: 
-Create Date: 2026-10-11 12:34:11.204114
+Create Date: 2026-10-11 12:38:07.836642
 """
 from typing import Sequence, Union
 
@@ -30,28 +30,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id', name=op.f('pk_modules')),
     sa.UniqueConstraint('slug', name=op.f('uq_modules_slug'))
     )
-    op.create_table('users',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('tg_id', sa.BigInteger(), nullable=False),
-    sa.Column('username', sa.String(length=64), nullable=True),
-    sa.Column('full_name', sa.String(length=200), nullable=False),
-    sa.Column('timezone', sa.String(length=64), nullable=False),
-    sa.Column('reminder_time', sa.Time(), nullable=False),
-    sa.Column('nudge_time', sa.Time(), nullable=False),
-    sa.Column('started_on', sa.Date(), nullable=False),
-    sa.Column('current_day', sa.Integer(), nullable=False),
-    sa.Column('streak', sa.Integer(), nullable=False),
-    sa.Column('best_streak', sa.Integer(), nullable=False),
-    sa.Column('xp', sa.Integer(), nullable=False),
-    sa.Column('last_done_date', sa.Date(), nullable=True),
-    sa.Column('last_check_date', sa.Date(), nullable=True),
-    sa.Column('last_nudge_date', sa.Date(), nullable=True),
-    sa.Column('is_active', sa.Boolean(), nullable=False),
-    sa.Column('plan', sa.String(length=16), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-    sa.PrimaryKeyConstraint('id', name=op.f('pk_users'))
-    )
-    op.create_index(op.f('ix_users_tg_id'), 'users', ['tg_id'], unique=True)
     op.create_table('lessons',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('key', sa.String(length=80), nullable=False),
@@ -72,21 +50,6 @@ def upgrade() -> None:
     sa.UniqueConstraint('key', name=op.f('uq_lessons_key'))
     )
     op.create_index(op.f('ix_lessons_day_number'), 'lessons', ['day_number'], unique=True)
-    op.create_table('completions',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.Column('lesson_id', sa.Integer(), nullable=False),
-    sa.Column('local_date', sa.Date(), nullable=False),
-    sa.Column('completed_at', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('xp_earned', sa.Integer(), nullable=False),
-    sa.Column('with_penalty', sa.Boolean(), nullable=False),
-    sa.ForeignKeyConstraint(['lesson_id'], ['lessons.id'], name=op.f('fk_completions_lesson_id_lessons'), ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_completions_user_id_users'), ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id', name=op.f('pk_completions')),
-    sa.UniqueConstraint('user_id', 'lesson_id', name='uq_completion_user_lesson')
-    )
-    op.create_index(op.f('ix_completions_local_date'), 'completions', ['local_date'], unique=False)
-    op.create_index(op.f('ix_completions_user_id'), 'completions', ['user_id'], unique=False)
     op.create_table('hardcore_tasks',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('lesson_id', sa.Integer(), nullable=False),
@@ -104,6 +67,44 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['lesson_id'], ['lessons.id'], name=op.f('fk_quiz_questions_lesson_id_lessons'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_quiz_questions'))
     )
+    op.create_table('users',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('tg_id', sa.BigInteger(), nullable=False),
+    sa.Column('username', sa.String(length=64), nullable=True),
+    sa.Column('full_name', sa.String(length=200), nullable=False),
+    sa.Column('timezone', sa.String(length=64), nullable=False),
+    sa.Column('reminder_time', sa.Time(), nullable=False),
+    sa.Column('nudge_time', sa.Time(), nullable=False),
+    sa.Column('started_on', sa.Date(), nullable=False),
+    sa.Column('current_lesson_id', sa.Integer(), nullable=True),
+    sa.Column('streak', sa.Integer(), nullable=False),
+    sa.Column('best_streak', sa.Integer(), nullable=False),
+    sa.Column('xp', sa.Integer(), nullable=False),
+    sa.Column('last_done_date', sa.Date(), nullable=True),
+    sa.Column('last_check_date', sa.Date(), nullable=True),
+    sa.Column('last_nudge_date', sa.Date(), nullable=True),
+    sa.Column('is_active', sa.Boolean(), nullable=False),
+    sa.Column('plan', sa.String(length=16), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+    sa.ForeignKeyConstraint(['current_lesson_id'], ['lessons.id'], name=op.f('fk_users_current_lesson_id_lessons'), ondelete='SET NULL'),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_users'))
+    )
+    op.create_index(op.f('ix_users_tg_id'), 'users', ['tg_id'], unique=True)
+    op.create_table('completions',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('lesson_id', sa.Integer(), nullable=False),
+    sa.Column('local_date', sa.Date(), nullable=False),
+    sa.Column('completed_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('xp_earned', sa.Integer(), nullable=False),
+    sa.Column('with_penalty', sa.Boolean(), nullable=False),
+    sa.ForeignKeyConstraint(['lesson_id'], ['lessons.id'], name=op.f('fk_completions_lesson_id_lessons'), ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_completions_user_id_users'), ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_completions')),
+    sa.UniqueConstraint('user_id', 'lesson_id', name='uq_completion_user_lesson')
+    )
+    op.create_index(op.f('ix_completions_local_date'), 'completions', ['local_date'], unique=False)
+    op.create_index(op.f('ix_completions_user_id'), 'completions', ['user_id'], unique=False)
     op.create_table('penalties',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -164,14 +165,14 @@ def downgrade() -> None:
     op.drop_table('quiz_attempts')
     op.drop_index(op.f('ix_penalties_user_id'), table_name='penalties')
     op.drop_table('penalties')
-    op.drop_table('quiz_questions')
-    op.drop_table('hardcore_tasks')
     op.drop_index(op.f('ix_completions_user_id'), table_name='completions')
     op.drop_index(op.f('ix_completions_local_date'), table_name='completions')
     op.drop_table('completions')
-    op.drop_index(op.f('ix_lessons_day_number'), table_name='lessons')
-    op.drop_table('lessons')
     op.drop_index(op.f('ix_users_tg_id'), table_name='users')
     op.drop_table('users')
+    op.drop_table('quiz_questions')
+    op.drop_table('hardcore_tasks')
+    op.drop_index(op.f('ix_lessons_day_number'), table_name='lessons')
+    op.drop_table('lessons')
     op.drop_table('modules')
     # ### end Alembic commands ###

@@ -109,7 +109,9 @@ class User(TimestampMixin, Base):
     nudge_time: Mapped[time] = mapped_column(Time)
 
     started_on: Mapped[date] = mapped_column(Date)
-    current_day: Mapped[int] = mapped_column(Integer, default=1)  # keyingi dars raqami
+    # Joriy (navbatdagi) dars. Raqam emas, id: kontent tartibi o'zgarsa ham user o'sha darsda qoladi.
+    # None — kurs tugagan; yangi dars qo'shilsa repo.current_lesson() uni topadi.
+    current_lesson_id: Mapped[int | None] = mapped_column(ForeignKey("lessons.id", ondelete="SET NULL"))
 
     streak: Mapped[int] = mapped_column(Integer, default=0)
     best_streak: Mapped[int] = mapped_column(Integer, default=0)
