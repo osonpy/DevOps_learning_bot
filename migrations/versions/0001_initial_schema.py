@@ -1,8 +1,8 @@
 """initial schema
 
-Revision ID: 22f348cbba19
+Revision ID: 0001
 Revises: 
-Create Date: 2026-10-11 11:50:50.998575
+Create Date: 2026-10-11 12:34:11.204114
 """
 from typing import Sequence, Union
 
@@ -10,7 +10,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = '22f348cbba19'
+revision: str = '0001'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -48,12 +48,10 @@ def upgrade() -> None:
     sa.Column('last_nudge_date', sa.Date(), nullable=True),
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('plan', sa.String(length=16), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_users'))
     )
-    with op.batch_alter_table('users', schema=None) as batch_op:
-        batch_op.create_index(batch_op.f('ix_users_tg_id'), ['tg_id'], unique=True)
-
+    op.create_index(op.f('ix_users_tg_id'), 'users', ['tg_id'], unique=True)
     op.create_table('lessons',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('key', sa.String(length=80), nullable=False),
@@ -73,9 +71,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id', name=op.f('pk_lessons')),
     sa.UniqueConstraint('key', name=op.f('uq_lessons_key'))
     )
-    with op.batch_alter_table('lessons', schema=None) as batch_op:
-        batch_op.create_index(batch_op.f('ix_lessons_day_number'), ['day_number'], unique=True)
-
+    op.create_index(op.f('ix_lessons_day_number'), 'lessons', ['day_number'], unique=True)
     op.create_table('completions',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -89,10 +85,8 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id', name=op.f('pk_completions')),
     sa.UniqueConstraint('user_id', 'lesson_id', name='uq_completion_user_lesson')
     )
-    with op.batch_alter_table('completions', schema=None) as batch_op:
-        batch_op.create_index(batch_op.f('ix_completions_local_date'), ['local_date'], unique=False)
-        batch_op.create_index(batch_op.f('ix_completions_user_id'), ['user_id'], unique=False)
-
+    op.create_index(op.f('ix_completions_local_date'), 'completions', ['local_date'], unique=False)
+    op.create_index(op.f('ix_completions_user_id'), 'completions', ['user_id'], unique=False)
     op.create_table('hardcore_tasks',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('lesson_id', sa.Integer(), nullable=False),
@@ -121,15 +115,13 @@ def upgrade() -> None:
     sa.Column('quiz_progress', sa.Integer(), nullable=False),
     sa.Column('proof', sa.Text(), nullable=True),
     sa.Column('resolved_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     sa.ForeignKeyConstraint(['hardcore_task_id'], ['hardcore_tasks.id'], name=op.f('fk_penalties_hardcore_task_id_hardcore_tasks'), ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['lesson_id'], ['lessons.id'], name=op.f('fk_penalties_lesson_id_lessons'), ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_penalties_user_id_users'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_penalties'))
     )
-    with op.batch_alter_table('penalties', schema=None) as batch_op:
-        batch_op.create_index(batch_op.f('ix_penalties_user_id'), ['user_id'], unique=False)
-
+    op.create_index(op.f('ix_penalties_user_id'), 'penalties', ['user_id'], unique=False)
     op.create_table('quiz_attempts',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -137,14 +129,12 @@ def upgrade() -> None:
     sa.Column('chosen_index', sa.Integer(), nullable=False),
     sa.Column('is_correct', sa.Boolean(), nullable=False),
     sa.Column('context', sa.String(length=16), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     sa.ForeignKeyConstraint(['question_id'], ['quiz_questions.id'], name=op.f('fk_quiz_attempts_question_id_quiz_questions'), ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_quiz_attempts_user_id_users'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_quiz_attempts'))
     )
-    with op.batch_alter_table('quiz_attempts', schema=None) as batch_op:
-        batch_op.create_index(batch_op.f('ix_quiz_attempts_user_id'), ['user_id'], unique=False)
-
+    op.create_index(op.f('ix_quiz_attempts_user_id'), 'quiz_attempts', ['user_id'], unique=False)
     op.create_table('review_cards',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -154,48 +144,34 @@ def upgrade() -> None:
     sa.Column('reviews', sa.Integer(), nullable=False),
     sa.Column('lapses', sa.Integer(), nullable=False),
     sa.Column('last_reviewed', sa.Date(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     sa.ForeignKeyConstraint(['question_id'], ['quiz_questions.id'], name=op.f('fk_review_cards_question_id_quiz_questions'), ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_review_cards_user_id_users'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_review_cards')),
     sa.UniqueConstraint('user_id', 'question_id', name='uq_review_user_question')
     )
-    with op.batch_alter_table('review_cards', schema=None) as batch_op:
-        batch_op.create_index(batch_op.f('ix_review_cards_due_date'), ['due_date'], unique=False)
-        batch_op.create_index(batch_op.f('ix_review_cards_user_id'), ['user_id'], unique=False)
-
+    op.create_index(op.f('ix_review_cards_due_date'), 'review_cards', ['due_date'], unique=False)
+    op.create_index(op.f('ix_review_cards_user_id'), 'review_cards', ['user_id'], unique=False)
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
-    with op.batch_alter_table('review_cards', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_review_cards_user_id'))
-        batch_op.drop_index(batch_op.f('ix_review_cards_due_date'))
-
+    op.drop_index(op.f('ix_review_cards_user_id'), table_name='review_cards')
+    op.drop_index(op.f('ix_review_cards_due_date'), table_name='review_cards')
     op.drop_table('review_cards')
-    with op.batch_alter_table('quiz_attempts', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_quiz_attempts_user_id'))
-
+    op.drop_index(op.f('ix_quiz_attempts_user_id'), table_name='quiz_attempts')
     op.drop_table('quiz_attempts')
-    with op.batch_alter_table('penalties', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_penalties_user_id'))
-
+    op.drop_index(op.f('ix_penalties_user_id'), table_name='penalties')
     op.drop_table('penalties')
     op.drop_table('quiz_questions')
     op.drop_table('hardcore_tasks')
-    with op.batch_alter_table('completions', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_completions_user_id'))
-        batch_op.drop_index(batch_op.f('ix_completions_local_date'))
-
+    op.drop_index(op.f('ix_completions_user_id'), table_name='completions')
+    op.drop_index(op.f('ix_completions_local_date'), table_name='completions')
     op.drop_table('completions')
-    with op.batch_alter_table('lessons', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_lessons_day_number'))
-
+    op.drop_index(op.f('ix_lessons_day_number'), table_name='lessons')
     op.drop_table('lessons')
-    with op.batch_alter_table('users', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_users_tg_id'))
-
+    op.drop_index(op.f('ix_users_tg_id'), table_name='users')
     op.drop_table('users')
     op.drop_table('modules')
     # ### end Alembic commands ###

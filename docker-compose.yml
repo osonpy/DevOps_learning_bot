@@ -17,7 +17,8 @@ x-app: &app
 
 services:
   db:
-    image: postgres:16-alpine
+    # Digest bilan qotirilgan (16-alpine, multi-arch index). Yangilash: docker buildx imagetools inspect postgres:16-alpine
+    image: postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-devops}
@@ -32,6 +33,9 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    deploy:
+      resources:
+        limits: {memory: 512M}
     networks: [backend]
 
   # Bir martalik: migratsiya + seed. Muvaffaqiyatli tugasa bot ishga tushadi.

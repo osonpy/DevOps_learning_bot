@@ -48,3 +48,12 @@ def test_bot_image_does_not_migrate_on_start():
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     assert "ENTRYPOINT" not in dockerfile and "docker-entrypoint" not in dockerfile
     assert not (ROOT / "docker-entrypoint.sh").exists()
+
+
+def test_postgres_image_pinned_by_digest():
+    image = SERVICES["db"]["image"]
+    assert image.startswith("postgres:16-alpine@sha256:") and len(image.split("@sha256:")[1]) == 64
+
+
+def test_db_has_memory_limit():
+    assert SERVICES["db"]["deploy"]["resources"]["limits"]["memory"]
